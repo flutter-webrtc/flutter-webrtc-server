@@ -4,7 +4,7 @@
   "description": "webapp",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server --hot --inline --progress --colors --watch --compress --content-base ./dist  --port 8086 --host 0.0.0.0",
+    "start": "webpack-dev-server --https --cert ./certs/cert.pem --key ./certs/key.pem --hot --inline --progress --colors --watch --compress --content-base ./dist  --port 8086 --host 0.0.0.0",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
