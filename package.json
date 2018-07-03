@@ -1,0 +1,48 @@
+{
+  "name": "flutter-webrtc-web",
+  "version": "1.0.0",
+  "description": "webapp",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack-dev-server --hot --inline --progress --colors --watch --compress --content-base ./dist  --port 8086 --host 0.0.0.0",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloudwebrtc/flutter-webrtc-server.git"
+  },
+  "keywords": [
+    "flutter",
+    "webrtc"
+  ],
+  "author": "duanweiwei1982@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cloudwebrtc/flutter-webrtc-server/issues"
+  },
+  "homepage": "https://github.com/cloudwebrtc/flutter-webrtc-server#readme",
+  "dependencies": {
+    "@material-ui/core": "^1.3.1",
+    "@material-ui/icons": "^1.1.0",
+    "prop-types": "^15.6.2",
+    "react": "^16.4.1",
+    "react-dom": "^16.4.1"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-loader": "^7.1.4",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "css-loader": "^0.28.11",
+    "extract-text-webpack-plugin": "^4.0.0-beta.0",
+    "html-webpack-plugin": "^3.2.0",
+    "less": "^3.0.4",
+    "less-loader": "^4.1.0",
+    "style-loader": "^0.21.0",
+    "webpack": "^4.14.0",
+    "webpack-cli": "^3.0.8",
+    "webpack-dev-server": "^3.1.4"
+  }
+}
