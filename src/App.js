@@ -10,7 +10,8 @@ import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
 import blue from '@material-ui/core/colors/blue';
 
-var socket = require('socket.io-client')('https://localhost:4443');
+var socket;
+
 
 var RTCPeerConnection;
 var RTCSessionDescription;
@@ -46,18 +47,42 @@ export default class App extends Component {
     configuration = { "iceServers": [{ "url": "stun:stun.l.google.com:19302" }] };
 
 
-    socket.on('exchange', (data) => {
-      this.exchange(data);
-    });
-    socket.on('leave', (socketId) => {
-      this.leave(socketId);
-    });
-
-    socket.on('connect', (data) => {
-      console.log('connect');
+    socket = new WebSocket('wss://localhost:4443');
+    socket.onopen = () => {
+      console.log("wss connect success...");
       this.getLocalStream();
-    });
+    };
 
+    socket.onmessage = (e) => {
+
+      var parsedMessage = JSON.parse(e.data);
+
+      console.info('Received message: ' + parsedMessage.type);
+      console.info('Received message data: ' + parsedMessage.data);
+
+      switch (parsedMessage.type) {
+        case 'join':
+            this.onJoin(parsedMessage);
+          break;
+          case 'exchange':
+            this.exchange(parsedMessage);
+          break;
+          case 'leave':
+            var sessionId = JSON.parse(parsedMessage.data);
+            this.leave(sessionId);
+          break;
+        default:
+          console.error('Unrecognized message', parsedMessage);
+      }
+    };
+
+    socket.onerror = (e) => {
+      console.log('onerror::' + e.data);
+    }
+
+    socket.onclose = (e) => {
+      console.log('onclose::' + e.data);
+    }
   }
 
   getLocalStream = () => {
@@ -77,18 +102,36 @@ export default class App extends Component {
         console.log(err.name + ": " + err.message);
       }
       );
+  }
 
 
+  // 获取6位随机id
+  getRandomUserId() {
+    var num = "";
+    for (var i = 0; i < 6; i++) {
+      num += Math.floor(Math.random() * 10);
+    }
+    return num;
   }
 
   join = (roomID) => {
-    socket.emit('join', roomID, (socketIds) => {
-      console.log('join', socketIds);
-      for (var i in socketIds) {
-        var socketId = socketIds[i];
-        this.createPC(socketId, true);
-      }
-    });
+    let message = {
+      type: 'join',
+      roomId: roomID,
+      sessionId: this.getRandomUserId(),
+    }
+    socket.send(JSON.stringify(message));
+  }
+
+  onJoin = (socketIds) => {
+    socketIds = JSON.parse(socketIds.data);
+    console.log("socketIds:" + socketIds);
+    for (var i in socketIds) {
+      
+      var socketId = socketIds[i];
+      console.log("socketIds:socketId:" + socketId);
+      this.createPC(socketId, true);
+    }
   }
 
   createOffer = (pc, socketId) => {
@@ -96,7 +139,13 @@ export default class App extends Component {
       console.log('createOffer', desc);
       pc.setLocalDescription(desc, () => {
         console.log('setLocalDescription', pc.localDescription);
-        socket.emit('exchange', { 'to': socketId, 'sdp': pc.localDescription });
+
+        let message = {
+          type: 'exchange',
+          to: socketId,
+          sdp: pc.localDescription,
+        }
+        socket.send(JSON.stringify(message));
       }, this.logError);
     }, this.logError);
   }
@@ -108,7 +157,13 @@ export default class App extends Component {
     pc.onicecandidate = (event) => {
       console.log('onicecandidate', event);
       if (event.candidate) {
-        socket.emit('exchange', { 'to': socketId, 'candidate': event.candidate });
+
+        let message = {
+          type: 'exchange',
+          to: socketId,
+          candidate: event.candidate,
+        }
+        socket.send(JSON.stringify(message));
       }
     };
 
@@ -131,11 +186,6 @@ export default class App extends Component {
 
     pc.onaddstream = (event) => {
       console.log('onaddstream', event);
-      // var element = document.createElement('video');
-      // element.id = "remoteView" + socketId;
-      // element.autoplay = 'autoplay';
-      // element.src = URL.createObjectURL(event.stream);
-      // remoteViewContainer.appendChild(element);
 
       remoteView.srcObject = event.stream;
       remoteView.onloadedmetadata = function (e) {
@@ -179,6 +229,7 @@ export default class App extends Component {
   }
 
   exchange = (data) => {
+    data = JSON.parse(data.data);
     var fromId = data.from;
     var pc;
     if (fromId in pcPeers) {
@@ -186,6 +237,8 @@ export default class App extends Component {
     } else {
       pc = this.createPC(fromId, false);
     }
+
+    console.log("data.from:" + data.from);
 
     if (data.sdp) {
       console.log('exchange sdp', data);
@@ -195,7 +248,13 @@ export default class App extends Component {
             console.log('createAnswer', desc);
             pc.setLocalDescription(desc, () => {
               console.log('setLocalDescription', pc.localDescription);
-              socket.emit('exchange', { 'to': fromId, 'sdp': pc.localDescription });
+
+              let message = {
+                type: 'exchange',
+                to: fromId,
+                sdp: pc.localDescription,
+              }
+              socket.send(JSON.stringify(message));
             }, this.logError);
           }, this.logError);
       }, this.logError);
@@ -213,8 +272,6 @@ export default class App extends Component {
     var video = document.getElementById("remoteView" + socketId);
     if (video) video.remove();
   }
-
-
 
   logError = (error) => {
     console.log("logError", error);
