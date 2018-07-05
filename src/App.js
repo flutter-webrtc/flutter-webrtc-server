@@ -22,6 +22,7 @@ var selfView;
 var remoteView;
 var localStream;
 var configuration;
+var roomId = '111111';
 
 
 const theme = createMuiTheme({
@@ -117,7 +118,7 @@ export default class App extends Component {
   join = (roomID) => {
     let message = {
       type: 'join',
-      roomId: roomID,
+      roomId: roomId,
       sessionId: this.getRandomUserId(),
     }
     socket.send(JSON.stringify(message));
@@ -144,6 +145,7 @@ export default class App extends Component {
           type: 'exchange',
           to: socketId,
           sdp: pc.localDescription,
+          roomId:roomId,
         }
         socket.send(JSON.stringify(message));
       }, this.logError);
@@ -162,6 +164,7 @@ export default class App extends Component {
           type: 'exchange',
           to: socketId,
           candidate: event.candidate,
+          roomId:roomId,
         }
         socket.send(JSON.stringify(message));
       }
@@ -253,6 +256,7 @@ export default class App extends Component {
                 type: 'exchange',
                 to: fromId,
                 sdp: pc.localDescription,
+                roomId:roomId,
               }
               socket.send(JSON.stringify(message));
             }, this.logError);
@@ -278,11 +282,10 @@ export default class App extends Component {
   }
 
   joinRoomPress = () => {
-    var roomID = '111111';
-    if (roomID == "") {
+    if (roomId == "") {
       alert('Please enter room ID');
     } else {
-      this.join(roomID);
+      this.join(roomId);
     }
   }
 

@@ -50,7 +50,7 @@ export default class CallHandler {
 
             var sessionIds = [];
             wss.clients.forEach(function (cur_client) {
-              if (cur_client.hasOwnProperty('sessionId')) {
+              if (cur_client.hasOwnProperty('sessionId') && cur_client.roomId === message.roomId) {
                 sessionIds.push(cur_client.sessionId);
               }
             });
@@ -88,7 +88,7 @@ export default class CallHandler {
             client.send(JSON.stringify(msg));
 
             wss.clients.forEach(function (cur_client) {
-              if (cur_client.sessionId === message.to) {
+              if (cur_client.sessionId === message.to && cur_client.roomId === message.roomId) {
                 try {
                   cur_client.send(JSON.stringify(msg));
                 } catch (e) {
