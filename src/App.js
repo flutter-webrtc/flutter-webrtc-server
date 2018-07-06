@@ -411,8 +411,8 @@ class App extends Component {
   }
 
   invitePeer = (peer_id, type) => {
+    this.setState({ joined: true, open: true });
     this.invite(peer_id, type);
-    this.setState({ joined: true });
     this.getLocalStream(type);
   }
 
@@ -429,11 +429,6 @@ class App extends Component {
         pc.textDataChannel.send(text);
       }
     }
-  }
-
-  handleInvite = (id, type) => {
-    this.setState({ open: true });
-    this.invitePeer(id, type);
   }
 
   handleClickOpen = () => {
@@ -469,10 +464,10 @@ class App extends Component {
                   <div>
                     <ListItem button>
                       <ListItemText primary={peer.name + '  [' + peer.user_agent + ']'} secondary={'id: ' + peer.id} />
-                      <IconButton color="primary" onClick={() => this.handleInvite(peer.id, 'audio')} className={classes.button} aria-label="Make a voice call.">
+                      <IconButton color="primary" onClick={() => this.invitePeer(peer.id, 'audio')} className={classes.button} aria-label="Make a voice call.">
                         <CallIcon />
                       </IconButton>
-                      <IconButton color="primary" onClick={() => this.handleInvite(peer.id, 'video')} className={classes.button} aria-label="Make a video call.">
+                      <IconButton color="primary" onClick={() => this.invitePeer(peer.id, 'video')} className={classes.button} aria-label="Make a video call.">
                         <VideoCamIcon />
                       </IconButton>
                     </ListItem>
