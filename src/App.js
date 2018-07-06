@@ -10,20 +10,10 @@ import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
 import blue from '@material-ui/core/colors/blue';
 
-var socket;
-
 
 var RTCPeerConnection;
 var RTCSessionDescription;
-
-
-var pcPeers = {};
-var selfView;
-var remoteView;
-var localStream;
 var configuration;
-var roomId = '111111';
-
 
 const theme = createMuiTheme({
   palette: {
@@ -33,10 +23,23 @@ const theme = createMuiTheme({
 
 export default class App extends Component {
 
+  constructor(props) {
+    super(props);
+
+    this.socket;
+    this.selfView = null;
+    this.remoteView = null;
+    this.localStream = null;
+    this.state = {
+      pcPeers: {},
+      room: '111111',
+    };
+  }
+
   componentDidMount = () => {
 
-    remoteView = this.refs['remoteView'];
-    selfView = this.refs['selfView'];
+    this.remoteView = this.refs['remoteView'];
+    this.selfView = this.refs['selfView'];
 
     RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection || window.msRTCPeerConnection;
     RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription || window.webkitRTCSessionDescription || window.msRTCSessionDescription;
@@ -47,64 +50,77 @@ export default class App extends Component {
     ];
     configuration = { "iceServers": [{ "url": "stun:stun.l.google.com:19302" }] };
 
-
-    socket = new WebSocket('wss://localhost:4443');
-    socket.onopen = () => {
+    this.socket = new WebSocket('wss://localhost:4443');
+    this.socket.onopen = () => {
       console.log("wss connect success...");
+
+      let message = {
+        type: 'new',
+        user_agent: 'html5/Chrome m68',
+        name: 'WebAPP',
+        id: this.getRandomUserId(),
+      }
+      this.send(message);
       this.getLocalStream();
     };
 
-    socket.onmessage = (e) => {
+    this.socket.onmessage = (e) => {
 
       var parsedMessage = JSON.parse(e.data);
 
-      console.info('Received message: ' + parsedMessage.type);
-      console.info('Received message data: ' + parsedMessage.data);
+      console.info('on message: {\n    type = ' + parsedMessage.type + ', \n    data = ' + parsedMessage.data + '\n}');
 
       switch (parsedMessage.type) {
         case 'join':
-            this.onJoin(parsedMessage);
+          this.onJoin(parsedMessage);
           break;
-          case 'exchange':
-            this.exchange(parsedMessage);
+        case 'offer':
+          this.onOffer(parsedMessage);
           break;
-          case 'leave':
-            var sessionId = JSON.parse(parsedMessage.data);
-            this.leave(sessionId);
+        case 'answer':
+          this.onAnswer(parsedMessage);
+          break;
+        case 'candidate':
+          this.onCandidate(parsedMessage);
+          break;
+        case 'peers':
+          this.onPeers(parsedMessage);
+          break;
+        case 'leave':
+          var id = JSON.parse(parsedMessage.data);
+          this.leave(id);
           break;
         default:
           console.error('Unrecognized message', parsedMessage);
       }
     };
 
-    socket.onerror = (e) => {
+    this.socket.onerror = (e) => {
       console.log('onerror::' + e.data);
     }
 
-    socket.onclose = (e) => {
+    this.socket.onclose = (e) => {
       console.log('onclose::' + e.data);
     }
   }
 
   getLocalStream = () => {
-
     var constraints = { audio: true, video: { width: 1280, height: 720 } };
-
+    var thiz = this;
+    var selfView = this.selfView;
     navigator.mediaDevices.getUserMedia(constraints)
       .then(function (mediaStream) {
-        localStream = mediaStream;
+        thiz.localStream = mediaStream;
         selfView.srcObject = mediaStream;
         selfView.mute = true;
         selfView.onloadedmetadata = function (e) {
           selfView.play();
         };
-      })
-      .catch((err) => {
+      }).catch((err) => {
         console.log(err.name + ": " + err.message);
       }
       );
   }
-
 
   // 获取6位随机id
   getRandomUserId() {
@@ -115,66 +131,65 @@ export default class App extends Component {
     return num;
   }
 
-  join = (roomID) => {
+  send = (data) => {
+    this.socket.send(JSON.stringify(data));
+  }
+
+  join = (room) => {
     let message = {
       type: 'join',
-      roomId: roomId,
-      sessionId: this.getRandomUserId(),
+      room: this.state.room,
     }
-    socket.send(JSON.stringify(message));
+    this.send(message);
   }
 
-  onJoin = (socketIds) => {
-    socketIds = JSON.parse(socketIds.data);
-    console.log("socketIds:" + socketIds);
-    for (var i in socketIds) {
-      
-      var socketId = socketIds[i];
-      console.log("socketIds:socketId:" + socketId);
-      this.createPC(socketId, true);
+  onJoin = (ids) => {
+    ids = JSON.parse(ids.data);
+    console.log("ids:" + ids);
+    for (var i in ids) {
+      var id = ids[i];
+      console.log("ids => id " + id);
+      this.createPC(id, true);
     }
   }
 
-  createOffer = (pc, socketId) => {
+  createOffer = (pc, id) => {
     pc.createOffer((desc) => {
-      console.log('createOffer', desc);
+      console.log('createOffer: ', desc.sdp);
       pc.setLocalDescription(desc, () => {
         console.log('setLocalDescription', pc.localDescription);
-
         let message = {
-          type: 'exchange',
-          to: socketId,
+          type: 'offer',
+          to: id,
           sdp: pc.localDescription,
-          roomId:roomId,
+          room: this.state.room,
         }
-        socket.send(JSON.stringify(message));
+        this.send(message);
       }, this.logError);
     }, this.logError);
   }
 
-  createPC = (socketId, isOffer) => {
+  createPC = (id, isOffer) => {
     var pc = new RTCPeerConnection(configuration);
-    pcPeers[socketId] = pc;
-
+    this.state.pcPeers[id] = pc;
     pc.onicecandidate = (event) => {
       console.log('onicecandidate', event);
       if (event.candidate) {
-
         let message = {
-          type: 'exchange',
-          to: socketId,
+          type: 'candidate',
+          to: id,
           candidate: event.candidate,
-          roomId:roomId,
+          room: this.state.room,
         }
-        socket.send(JSON.stringify(message));
+        this.send(message);
       }
     };
 
     pc.onnegotiationneeded = () => {
       console.log('onnegotiationneeded');
-      if (isOffer) {
-        this.createOffer(pc, socketId);
-      }
+      //if (isOffer) {
+      //  this.createOffer(pc, id);
+      //}
     }
 
     pc.oniceconnectionstatechange = (event) => {
@@ -189,16 +204,17 @@ export default class App extends Component {
 
     pc.onaddstream = (event) => {
       console.log('onaddstream', event);
-
+      var remoteView = this.remoteView;
       remoteView.srcObject = event.stream;
       remoteView.onloadedmetadata = function (e) {
         remoteView.play();
       };
-
-
     };
-    pc.addStream(localStream);
 
+    pc.addStream(this.localStream);
+
+    if(isOffer)
+      this.createOffer(pc, id);
     return pc;
   }
 
@@ -231,48 +247,71 @@ export default class App extends Component {
     pc.textDataChannel = dataChannel;
   }
 
-  exchange = (data) => {
+  onPeers = (data) => {
+    console.log("peers = " + JSON.stringify(data));
+  }
+
+  onOffer = (data) => {
     data = JSON.parse(data.data);
-    var fromId = data.from;
-    var pc;
-    if (fromId in pcPeers) {
-      pc = pcPeers[fromId];
-    } else {
-      pc = this.createPC(fromId, false);
-    }
+    var from = data.from;
+    var pc = this.createPC(from, false);
 
     console.log("data.from:" + data.from);
 
     if (data.sdp) {
-      console.log('exchange sdp', data);
+      //console.log('on offer sdp', data);
       pc.setRemoteDescription(new RTCSessionDescription(data.sdp), () => {
         if (pc.remoteDescription.type == "offer")
           pc.createAnswer((desc) => {
-            console.log('createAnswer', desc);
+            console.log('createAnswer: ', desc.sdp);
             pc.setLocalDescription(desc, () => {
               console.log('setLocalDescription', pc.localDescription);
-
               let message = {
-                type: 'exchange',
-                to: fromId,
+                type: 'answer',
+                to: from,
                 sdp: pc.localDescription,
-                roomId:roomId,
+                room: this.state.room,
               }
-              socket.send(JSON.stringify(message));
+              this.send(message);
             }, this.logError);
           }, this.logError);
       }, this.logError);
-    } else {
-      console.log('exchange candidate', data);
+    }
+  }
+
+  onAnswer = (data) => {
+    data = JSON.parse(data.data);
+    var from = data.from;
+    var pc = null;
+    if (from in this.state.pcPeers) {
+      pc = this.state.pcPeers[from];
+    }
+
+    if (pc && data.sdp) {
+      //console.log('on answer sdp', data);
+      pc.setRemoteDescription(new RTCSessionDescription(data.sdp), () => {
+      }, this.logError);
+    }
+  }
+
+  onCandidate = (data) => {
+    data = JSON.parse(data.data);
+    var from = data.from;
+    var pc = null;
+    if (from in this.state.pcPeers) {
+      pc = this.state.pcPeers[from];
+    }
+    if (pc && data.candidate) {
+      //console.log('on candidate ', data);
       pc.addIceCandidate(new RTCIceCandidate(data.candidate));
     }
   }
 
   leave = (socketId) => {
     console.log('leave', socketId);
-    var pc = pcPeers[socketId];
-    pc.close();
-    delete pcPeers[socketId];
+    var pc = this.state.pcPeers[socketId];
+    if (pc !== undefined) pc.close();
+    delete this.state.pcPeers[socketId];
     var video = document.getElementById("remoteView" + socketId);
     if (video) video.remove();
   }
@@ -282,10 +321,10 @@ export default class App extends Component {
   }
 
   joinRoomPress = () => {
-    if (roomId == "") {
+    if (this.state.room == "") {
       alert('Please enter room ID');
     } else {
-      this.join(roomId);
+      this.join(this.state.room);
     }
   }
 
@@ -297,8 +336,8 @@ export default class App extends Component {
       //document.getElementById('textRoomInput').value = '';
       // var content = document.getElementById('textRoomContent');
       // content.innerHTML = content.innerHTML + '<p>' + 'Me' + ': ' + text + '</p>';
-      for (var key in pcPeers) {
-        var pc = pcPeers[key];
+      for (var key in this.state.pcPeers) {
+        var pc = this.state.pcPeers[key];
         pc.textDataChannel.send(text);
       }
     }
@@ -310,7 +349,7 @@ export default class App extends Component {
     return (
       <MuiThemeProvider theme={theme}>
         <div>
-          <video ref='selfView' autoplay style={{ width: '320px', height: '240px' }}></video>
+          <video ref='selfView' autoplay muted='true' style={{ width: '320px', height: '240px' }}></video>
           <video ref='remoteView' autoplay style={{ width: '320px', height: '240px' }}></video>
           <Button color="primary" onClick={this.joinRoomPress}>
             join room
