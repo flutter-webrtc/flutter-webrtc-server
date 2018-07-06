@@ -14,8 +14,8 @@ export default class CallHandler {
 
     init() {
         var options = {
-            key: fs.readFileSync('../../certs/key.pem'),
-            cert: fs.readFileSync('../../certs/cert.pem')
+            key: fs.readFileSync('certs/key.pem'),
+            cert: fs.readFileSync('certs/cert.pem')
         };
         var server_port = (process.env.PORT || 4443);
 
