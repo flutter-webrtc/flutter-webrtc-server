@@ -4,12 +4,23 @@ import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import { withStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
-import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
 import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
 import blue from '@material-ui/core/colors/blue';
-
+import ListItemText from '@material-ui/core/ListItemText';
+import ListItem from '@material-ui/core/ListItem';
+import List from '@material-ui/core/List';
+import Divider from '@material-ui/core/Divider';
+import browser from 'bowser';
+import Dialog from '@material-ui/core/Dialog';
+import Typography from '@material-ui/core/Typography';
+import CloseIcon from '@material-ui/icons/Close';
+import Slide from '@material-ui/core/Slide';
+import VideoCamIcon from '@material-ui/icons/Videocam';
+import CallIcon from '@material-ui/icons/Call';
+import LocalVideoView from './LocalVideoView';
+import RemoteVideoView from './RemoteVideoView';
 
 var RTCPeerConnection;
 var RTCSessionDescription;
@@ -21,7 +32,24 @@ const theme = createMuiTheme({
   },
 });
 
-export default class App extends Component {
+const styles = {
+  root: {
+    flexGrow: 1,
+  },
+  flex: {
+    flex: 1,
+  },
+  menuButton: {
+    marginLeft: -12,
+    marginRight: 20,
+  },
+};
+
+function Transition(props) {
+  return <Slide direction="up" {...props} />;
+}
+
+class App extends Component {
 
   constructor(props) {
     super(props);
@@ -29,17 +57,20 @@ export default class App extends Component {
     this.socket;
     this.selfView = null;
     this.remoteView = null;
-    this.localStream = null;
+
     this.state = {
       pcPeers: {},
-      room: '111111',
+      session_id: '0-0',
+      joined: false,
+      peers: [],
+      open: false,
+      self_id: 0,
+      localStream: null,
+      remoteStream: null,
     };
   }
 
   componentDidMount = () => {
-
-    this.remoteView = this.refs['remoteView'];
-    this.selfView = this.refs['selfView'];
 
     RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection || window.msRTCPeerConnection;
     RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription || window.webkitRTCSessionDescription || window.msRTCSessionDescription;
@@ -53,15 +84,15 @@ export default class App extends Component {
     this.socket = new WebSocket('wss://localhost:4443');
     this.socket.onopen = () => {
       console.log("wss connect success...");
-
+      var self_id = this.getRandomUserId();
       let message = {
         type: 'new',
-        user_agent: 'html5/Chrome m68',
+        user_agent: browser.name + '/' + browser.version,
         name: 'WebAPP',
-        id: this.getRandomUserId(),
+        id: self_id,
       }
+      this.setState({ self_id });
       this.send(message);
-      this.getLocalStream();
     };
 
     this.socket.onmessage = (e) => {
@@ -71,8 +102,11 @@ export default class App extends Component {
       console.info('on message: {\n    type = ' + parsedMessage.type + ', \n    data = ' + parsedMessage.data + '\n}');
 
       switch (parsedMessage.type) {
-        case 'join':
-          this.onJoin(parsedMessage);
+        case 'invite':
+          this.onSessionInvite(parsedMessage);
+          break;
+        case 'ringing':
+          this.onPeerReady(parsedMessage);
           break;
         case 'offer':
           this.onOffer(parsedMessage);
@@ -87,8 +121,10 @@ export default class App extends Component {
           this.onPeers(parsedMessage);
           break;
         case 'leave':
-          var id = JSON.parse(parsedMessage.data);
-          this.leave(id);
+          this.onLeave(parsedMessage);
+          break;
+        case 'bye':
+          this.onBye(parsedMessage);
           break;
         default:
           console.error('Unrecognized message', parsedMessage);
@@ -104,22 +140,20 @@ export default class App extends Component {
     }
   }
 
-  getLocalStream = () => {
-    var constraints = { audio: true, video: { width: 1280, height: 720 } };
-    var thiz = this;
-    var selfView = this.selfView;
-    navigator.mediaDevices.getUserMedia(constraints)
-      .then(function (mediaStream) {
-        thiz.localStream = mediaStream;
-        selfView.srcObject = mediaStream;
-        selfView.mute = true;
-        selfView.onloadedmetadata = function (e) {
-          selfView.play();
-        };
-      }).catch((err) => {
-        console.log(err.name + ": " + err.message);
-      }
-      );
+  getLocalStream = (type) => {
+    return new Promise((pResolve, pReject) => {
+      var constraints = { audio: true, video: (type === 'video') ? { width: 1280, height: 720 } : false };
+      var thiz = this;
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(function (mediaStream) {
+          thiz.setState({ localStream: mediaStream });
+          pResolve();
+        }).catch((err) => {
+          console.log(err.name + ": " + err.message);
+          pReject(err);
+        }
+        );
+    });
   }
 
   // 获取6位随机id
@@ -135,22 +169,47 @@ export default class App extends Component {
     this.socket.send(JSON.stringify(data));
   }
 
-  join = (room) => {
+  invite = (peer_id, type) => {
+    var session_id = this.state.self_id + '-' + peer_id;
     let message = {
-      type: 'join',
-      room: this.state.room,
+      type: 'invite',
+      session_id: session_id,
+      to: peer_id,
+      media: type,
+    }
+    this.setState({ session_id });
+    this.send(message);
+  }
+
+  leave = () => {
+    let message = {
+      type: 'bye',
+      session_id: this.state.session_id,
+      from: this.state.self_id,
     }
     this.send(message);
   }
 
-  onJoin = (ids) => {
-    ids = JSON.parse(ids.data);
-    console.log("ids:" + ids);
-    for (var i in ids) {
-      var id = ids[i];
-      console.log("ids => id " + id);
+  onPeerReady = (message) => {
+    var data = message.data;
+    var id = data.id;
+    var media = data.media;
+    console.log("Remote peer ready: id " + id);
+    this.getLocalStream(media).then(() => {
       this.createPC(id, true);
-    }
+      this.setState({ joined: true, open: true });
+    });
+  }
+
+  onSessionInvite = (message) => {
+    var data = message.data;
+    var from = data.from;
+    console.log("data:" + data);
+    var media = data.media;
+    this.setState({ open: true, session_id: data.session_id });
+    this.getLocalStream(media).then(() => {
+      var pc = this.createPC(from, false);
+    });
   }
 
   createOffer = (pc, id) => {
@@ -162,7 +221,7 @@ export default class App extends Component {
           type: 'offer',
           to: id,
           sdp: pc.localDescription,
-          room: this.state.room,
+          session_id: this.state.session_id,
         }
         this.send(message);
       }, this.logError);
@@ -171,7 +230,7 @@ export default class App extends Component {
 
   createPC = (id, isOffer) => {
     var pc = new RTCPeerConnection(configuration);
-    this.state.pcPeers[id] = pc;
+    this.state.pcPeers["" + id] = pc;
     pc.onicecandidate = (event) => {
       console.log('onicecandidate', event);
       if (event.candidate) {
@@ -179,7 +238,7 @@ export default class App extends Component {
           type: 'candidate',
           to: id,
           candidate: event.candidate,
-          room: this.state.room,
+          session_id: this.state.session_id,
         }
         this.send(message);
       }
@@ -204,16 +263,12 @@ export default class App extends Component {
 
     pc.onaddstream = (event) => {
       console.log('onaddstream', event);
-      var remoteView = this.remoteView;
-      remoteView.srcObject = event.stream;
-      remoteView.onloadedmetadata = function (e) {
-        remoteView.play();
-      };
+      this.setState({ remoteStream: event.stream });
     };
 
-    pc.addStream(this.localStream);
+    pc.addStream(this.state.localStream);
 
-    if(isOffer)
+    if (isOffer)
       this.createOffer(pc, id);
     return pc;
   }
@@ -247,18 +302,23 @@ export default class App extends Component {
     pc.textDataChannel = dataChannel;
   }
 
-  onPeers = (data) => {
+  onPeers = (message) => {
+    var data = message.data;
     console.log("peers = " + JSON.stringify(data));
+    this.setState({ peers: data });
   }
 
-  onOffer = (data) => {
-    data = JSON.parse(data.data);
+  onOffer = (message) => {
+    var data = message.data;
     var from = data.from;
-    var pc = this.createPC(from, false);
 
     console.log("data.from:" + data.from);
 
-    if (data.sdp) {
+    var pc = null;
+    if (from in this.state.pcPeers) {
+      pc = this.state.pcPeers[from];
+    }
+    if (pc && data.sdp) {
       //console.log('on offer sdp', data);
       pc.setRemoteDescription(new RTCSessionDescription(data.sdp), () => {
         if (pc.remoteDescription.type == "offer")
@@ -270,17 +330,18 @@ export default class App extends Component {
                 type: 'answer',
                 to: from,
                 sdp: pc.localDescription,
-                room: this.state.room,
+                session_id: this.state.session_id,
               }
               this.send(message);
             }, this.logError);
           }, this.logError);
       }, this.logError);
     }
+
   }
 
-  onAnswer = (data) => {
-    data = JSON.parse(data.data);
+  onAnswer = (message) => {
+    var data = message.data;
     var from = data.from;
     var pc = null;
     if (from in this.state.pcPeers) {
@@ -294,8 +355,8 @@ export default class App extends Component {
     }
   }
 
-  onCandidate = (data) => {
-    data = JSON.parse(data.data);
+  onCandidate = (message) => {
+    var data = message.data;
     var from = data.from;
     var pc = null;
     if (from in this.state.pcPeers) {
@@ -307,25 +368,52 @@ export default class App extends Component {
     }
   }
 
-  leave = (socketId) => {
-    console.log('leave', socketId);
-    var pc = this.state.pcPeers[socketId];
-    if (pc !== undefined) pc.close();
-    delete this.state.pcPeers[socketId];
-    var video = document.getElementById("remoteView" + socketId);
-    if (video) video.remove();
+  onLeave = (message) => {
+    var id = message.data;
+    console.log('leave', id);
+    var pcPeers = this.state.pcPeers;
+    var pc = pcPeers[id];
+    if (pc !== undefined) {
+      pc.close();
+      delete pcPeers[id];
+      this.setState({
+        joined: false,
+        pcPeers,
+        open: false,
+        localStream: null,
+        remoteStream: null
+      });
+    }
+  }
+
+  onBye = (message) => {
+    var data = message.data;
+    var from = data.from;
+    var to = data.to;
+    console.log('bye: ', data.session_id);
+    var pcPeers = this.state.pcPeers;
+    var pc = pcPeers[to];
+    if (pc !== undefined) {
+      pc.close();
+      delete pcPeers[to];
+      this.setState({
+        joined: false,
+        pcPeers,
+        open: false,
+        localStream: null,
+        remoteStream: null
+      });
+    }
   }
 
   logError = (error) => {
     console.log("logError", error);
   }
 
-  joinRoomPress = () => {
-    if (this.state.room == "") {
-      alert('Please enter room ID');
-    } else {
-      this.join(this.state.room);
-    }
+  invitePeer = (peer_id, type) => {
+    this.invite(peer_id, type);
+    this.setState({ joined: true });
+    this.getLocalStream(type);
   }
 
   textRoomPress() {
@@ -343,17 +431,85 @@ export default class App extends Component {
     }
   }
 
+  handleInvite = (id, type) => {
+    this.setState({ open: true });
+    this.invitePeer(id, type);
+  }
+
+  handleClickOpen = () => {
+    this.setState({ open: true });
+  };
+
+  handleClose = () => {
+    this.setState({ open: false });
+  };
 
   render() {
     const { classes } = this.props;
     return (
       <MuiThemeProvider theme={theme}>
-        <div>
-          <video ref='selfView' autoplay muted='true' style={{ width: '320px', height: '240px' }}></video>
-          <video ref='remoteView' autoplay style={{ width: '320px', height: '240px' }}></video>
-          <Button color="primary" onClick={this.joinRoomPress}>
-            join room
+        <div className={classes.root}>
+          <AppBar position="static">
+            <Toolbar>
+              <IconButton className={classes.menuButton} color="inherit" aria-label="Menu">
+                <MenuIcon />
+              </IconButton>
+              <Typography variant="title" color="inherit" className={classes.flex}>
+                Flutter WebRTC Demo
+            </Typography>
+              {/*<Button color="inherit">Join</Button>*/}
+            </Toolbar>
+          </AppBar>
+          <List>
+            {
+              this.state.peers.map((peer, i) => {
+                if (peer.id == this.state.self_id)
+                  return null;
+                return (
+                  <div>
+                    <ListItem button>
+                      <ListItemText primary={peer.name + '  [' + peer.user_agent + ']'} secondary={'id: ' + peer.id} />
+                      <IconButton color="primary" onClick={() => this.handleInvite(peer.id, 'audio')} className={classes.button} aria-label="Make a voice call.">
+                        <CallIcon />
+                      </IconButton>
+                      <IconButton color="primary" onClick={() => this.handleInvite(peer.id, 'video')} className={classes.button} aria-label="Make a video call.">
+                        <VideoCamIcon />
+                      </IconButton>
+                    </ListItem>
+                    <Divider />
+                  </div>
+                )
+              })
+            }
+          </List>
+          <Dialog
+            fullScreen
+            open={this.state.open}
+            onClose={this.handleClose}
+            TransitionComponent={Transition}
+          >
+            <AppBar className={classes.appBar}>
+              <Toolbar>
+                <IconButton color="inherit" onClick={this.leave} aria-label="Close">
+                  <CloseIcon />
+                </IconButton>
+                <Typography variant="title" color="inherit" className={classes.flex}>
+                  Calling
+              </Typography>
+              </Toolbar>
+            </AppBar>
+            <div>
+              {
+                this.state.remoteStream != null ? <RemoteVideoView stream={this.state.remoteStream} id={'remoteview'} /> : null
+              }
+              {
+                this.state.localStream != null ? <LocalVideoView stream={this.state.localStream} id={'localview'} /> : null
+              }
+            </div>
+            <Button color="primary" onClick={this.handleClose}>
+              Leave
           </Button>
+          </Dialog>
         </div>
       </MuiThemeProvider>
     );
@@ -364,3 +520,5 @@ export default class App extends Component {
 App.propTypes = {
   classes: PropTypes.object.isRequired,
 };
+
+export default withStyles(styles)(App);
