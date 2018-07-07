@@ -17,8 +17,8 @@ export default class CallHandler {
             key: fs.readFileSync('certs/key.pem'),
             cert: fs.readFileSync('certs/cert.pem')
         };
-        var server_port = (process.env.PORT || 4443);
 
+        var server_port = (process.env.PORT || 4443);
         this.server = https.createServer(options, app).listen(server_port, () => {
             console.log("flutter webrtc server started");
         });
@@ -29,6 +29,7 @@ export default class CallHandler {
 
     updatePeers = () => {
         var peers = [];
+
         this.wss.clients.forEach(function (client) {
             var peer = {};
             if (client.hasOwnProperty('id')) {
@@ -72,7 +73,6 @@ export default class CallHandler {
                     }
                 }
             }
-
             var msg = {
                 type: "leave",
                 data: client_self.id,
@@ -87,7 +87,6 @@ export default class CallHandler {
         });
 
         client_self.on("message", message => {
-
             try {
                 message = JSON.parse(message);
                 console.log("message.type:: " + message.type + ", \nbody: " + JSON.stringify(message));
@@ -188,7 +187,6 @@ export default class CallHandler {
                     }
                 case 'offer':
                     {
-
                         var msg = {
                             type: "offer",
                             data: {
@@ -211,7 +209,6 @@ export default class CallHandler {
                     break;
                 case 'answer':
                     {
-
                         var msg = {
                             type: "answer",
                             data: {
@@ -242,7 +239,7 @@ export default class CallHandler {
                                 candidate: message.candidate,
                             }
                         };
-
+                        
                         this.wss.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
                                 try {
