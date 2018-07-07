@@ -1,0 +1,20 @@
+
+
+.btnTools{
+    position: absolute;
+    bottom: 20px;
+    left: 0px;
+    right: 0px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .videoMuteImg{
+    display: block;
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    transform: translateY(-50%);
+  }

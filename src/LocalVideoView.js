@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import PropTypes from "prop-types";
+import css from './layout.css';
 
 export default class LocalVideoView extends Component {
 
@@ -39,6 +40,7 @@ export default class LocalVideoView extends Component {
         return (
             <div key={this.props.id}
                 style={small}>
+                {this.props.muted? <img src="assets/img/camera-off.svg" className={css.videoMuteImg}/> : null}
                 <video ref={this.props.id} id={this.props.id} autoPlay playsInline muted="true"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', }} />
             </div>

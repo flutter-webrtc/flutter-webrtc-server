@@ -19,8 +19,15 @@ import CloseIcon from '@material-ui/icons/Close';
 import Slide from '@material-ui/core/Slide';
 import VideoCamIcon from '@material-ui/icons/Videocam';
 import CallIcon from '@material-ui/icons/Call';
+import PhoneIcon from '@material-ui/icons/CallEnd';
+import VideoOnIcon from '@material-ui/icons/Videocam';
+import VideoOffIcon from '@material-ui/icons/VideocamOff';
+import MicIcon from '@material-ui/icons/Mic';
+import MicOffIcon from '@material-ui/icons/MicOff';
 import LocalVideoView from './LocalVideoView';
 import RemoteVideoView from './RemoteVideoView';
+import css from './layout.css';
+
 
 var RTCPeerConnection;
 var RTCSessionDescription;
@@ -41,6 +48,11 @@ const styles = {
   },
   menuButton: {
     marginLeft: -12,
+    marginRight: 20,
+  },
+
+  btnTool: {
+    color: 'white',
     marginRight: 20,
   },
 };
@@ -67,6 +79,10 @@ class App extends Component {
       self_id: 0,
       localStream: null,
       remoteStream: null,
+      audio_muted: false,
+      video_muted: false,
+      // local_video_muted: false,
+      // local_audio_muted: false,
     };
   }
 
@@ -143,10 +159,10 @@ class App extends Component {
   getLocalStream = (type) => {
     return new Promise((pResolve, pReject) => {
       var constraints = { audio: true, video: (type === 'video') ? { width: 1280, height: 720 } : false };
-      var thiz = this;
+      var that = this;
       navigator.mediaDevices.getUserMedia(constraints)
         .then(function (mediaStream) {
-          thiz.setState({ localStream: mediaStream });
+          that.setState({ localStream: mediaStream });
           pResolve();
         }).catch((err) => {
           console.log(err.name + ": " + err.message);
@@ -439,6 +455,51 @@ class App extends Component {
     this.setState({ open: false });
   };
 
+  /**
+     * video open/close
+     */
+  onVideoOnClickHandler = () => {
+    let video_muted = !this.state.video_muted;
+    this.onToggleLocalVideoTrack(video_muted);
+    this.setState({ video_muted });
+  }
+
+  onToggleLocalVideoTrack = (muted) => {
+    var videoTracks = this.state.localStream.getVideoTracks();
+    if (videoTracks.length === 0) {
+      console.log("No local video available.");
+      return;
+    }
+    console.log("Toggling video mute state.");
+    for (var i = 0; i < videoTracks.length; ++i) {
+      videoTracks[i].enabled = !muted;
+    }
+  }
+
+  /**
+     * mic open/close
+     */
+  onAudioClickHandler = () => {
+    let audio_muted = !this.state.audio_muted;
+    this.onToggleLocalAudioTrack(audio_muted);
+    this.setState({ audio_muted });
+  }
+
+
+  onToggleLocalAudioTrack = (muted) => {
+    var audioTracks = this.state.localStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      console.log("No local audio available.");
+      return;
+    }
+    console.log("Toggling audio mute state.");
+    for (var i = 0; i < audioTracks.length; ++i) {
+      audioTracks[i].enabled = !muted;
+    }
+
+  }
+
+
   render() {
     const { classes } = this.props;
     return (
@@ -485,9 +546,6 @@ class App extends Component {
           >
             <AppBar className={classes.appBar}>
               <Toolbar>
-                <IconButton color="inherit" onClick={this.leave} aria-label="Close">
-                  <CloseIcon />
-                </IconButton>
                 <Typography variant="title" color="inherit" className={classes.flex}>
                   Calling
               </Typography>
@@ -498,13 +556,29 @@ class App extends Component {
                 this.state.remoteStream != null ? <RemoteVideoView stream={this.state.remoteStream} id={'remoteview'} /> : null
               }
               {
-                this.state.localStream != null ? <LocalVideoView stream={this.state.localStream} id={'localview'} /> : null
+                this.state.localStream != null ? <LocalVideoView stream={this.state.localStream} muted={this.state.video_muted} id={'localview'} /> : null
               }
             </div>
-            <Button color="primary" onClick={this.handleClose}>
-              Leave
-          </Button>
+
+
+            <div className={css.btnTools}>
+              <Button variant="fab" mini color="primary" aria-label="add" style={styles.btnTool} onClick={this.onVideoOnClickHandler}>
+                {
+                  this.state.video_muted ? <VideoOffIcon /> : <VideoOnIcon />
+                }
+              </Button>
+              <Button variant="fab" color="secondary" aria-label="add" style={styles.btnTool} onClick={this.leave}>
+                <PhoneIcon />
+              </Button>
+              <Button variant="fab" mini color="primary" aria-label="add" style={styles.btnTool} onClick={this.onAudioClickHandler}>
+                {
+                  this.state.audio_muted ? <MicOffIcon /> : <MicIcon />
+                }
+              </Button>
+            </div>
+
           </Dialog>
+
         </div>
       </MuiThemeProvider>
     );
