@@ -30,7 +30,7 @@ export default class CallHandler {
     updatePeers = () => {
         var peers = [];
         this.wss.clients.forEach(function (client) {
-            var peer = new Object();
+            var peer = {};
             if (client.hasOwnProperty('id')) {
                 peer.id = client.id;
             }
@@ -46,9 +46,10 @@ export default class CallHandler {
             peers.push(peer);
         });
 
-        var msg = new Object();
-        msg.type = "peers";
-        msg.data = peers;
+        var msg = {
+            type: "peers",
+            data: peers,
+        };
 
         this.wss.clients.forEach(function (client) {
             client.send(JSON.stringify(msg));
@@ -59,21 +60,23 @@ export default class CallHandler {
         console.log('connection');
 
         client_self.on("close", data => {
-            var msg = new Object();
-            msg.type = "leave";
-            msg.data = client_self.id;
+            var session_id = client_self.session_id;
 
             //remove old session_id
-            /*
-            if (client.session_id !== undefined) {
-                for (let i = 0; i < sessions.length; i++) {
-                    let item = sessions[i];
-                    if (item == client.session_id) {
-                      sessions.splice(i, 1);
-                      break;
+            if (session_id !== undefined) {
+                for (let i = 0; i < this.sessions.length; i++) {
+                    let item = this.sessions[i];
+                    if (item.id == session_id) {
+                        this.sessions.splice(i, 1);
+                        break;
                     }
                 }
-            }*/
+            }
+
+            var msg = {
+                type: "leave",
+                data: client_self.id,
+            };
 
             this.wss.clients.forEach(function (client) {
                 if (client != client_self)
@@ -103,32 +106,42 @@ export default class CallHandler {
                     break;
                 case 'bye':
                     {
-                        var clients = [];
-                        var idx = 0;
-                        this.wss.clients.forEach(function (client) {
+                        var session = null;
+                        this.sessions.forEach((sess) => {
+                            if (sess.id == message.session_id) {
+                                session = sess;
+                            }
+                        });
+
+                        if (!session) {
+                            var msg = {
+                                type: "error",
+                                data: {
+                                    error: "Invalid session " + message.session_id,
+                                },
+                            };
+                            client.send(JSON.stringify(msg));
+                            return;
+                        }
+
+                        this.wss.clients.forEach((client) => {
                             if (client.session_id === message.session_id) {
                                 try {
-                                    clients[idx] = client;
-                                    idx++;
+
+                                    var msg = {
+                                        type: "bye",
+                                        data: {
+                                            session_id: message.session_id,
+                                            from: message.from,
+                                            to: (client.id == session.from ? session.to : session.from),
+                                        },
+                                    };
+                                    client.send(JSON.stringify(msg));
                                 } catch (e) {
                                     console.log("onUserJoin:" + e.message);
                                 }
                             }
                         });
-                        var data = {
-                            session_id: message.session_id,
-                        };
-
-                        var msg = new Object();
-                        msg.type = "bye";
-
-                        data.to = clients[1].id;
-                        msg.data = data;
-                        clients[0].send(JSON.stringify(msg));
-
-                        data.to = clients[0].id;
-                        msg.data = data;
-                        clients[1].send(JSON.stringify(msg));
                     }
                     break;
                 case "invite":
@@ -141,41 +154,49 @@ export default class CallHandler {
                         });
 
                         if (peer != null) {
-                            var msg = new Object();
-                            msg.type = "ringing";
-                            var data3 = new Object();
-                            data3.id = peer.id;
-                            data3.media = message.media;
-                            msg.data = data3;
+                            var msg = {
+                                type: "ringing",
+                                data: {
+                                    id: peer.id,
+                                    media: message.media,
+                                }
+                            };
                             client_self.send(JSON.stringify(msg));
                             client_self.session_id = message.session_id;
 
-                            msg.type = "invite";
-                            var data = new Object();
-                            data.to = peer.id;
-                            data.type = message.type;
-                            data.from = client_self.id;
-                            data.media = message.media;
-                            data.session_id = message.session_id;
-                            msg.data = data;
+                            msg = {
+                                type: "invite",
+                                data: {
+                                    to: peer.id,
+                                    from: client_self.id,
+                                    media: message.media,
+                                    session_id: message.session_id,
+                                }
+                            }
                             peer.send(JSON.stringify(msg));
                             peer.session_id = message.session_id;
+
+                            let session = {
+                                id: message.session_id,
+                                from: client_self.id,
+                                to: peer.id,
+                            };
+                            this.sessions.push(session);
                         }
 
-                        this.sessions.push(message.session_id);
                         break;
                     }
                 case 'offer':
                     {
-                        var data = {
-                            from: client_self.id,
-                            to: message.to,
-                            sdp: message.sdp,
-                        };
 
-                        var msg = new Object();
-                        msg.type = "offer";
-                        msg.data = data;
+                        var msg = {
+                            type: "offer",
+                            data: {
+                                from: client_self.id,
+                                to: message.to,
+                                sdp: message.sdp,
+                            },
+                        };
 
                         this.wss.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
@@ -190,15 +211,15 @@ export default class CallHandler {
                     break;
                 case 'answer':
                     {
-                        var data = {
-                            from: client_self.id,
-                            to: message.to,
-                            sdp: message.sdp,
-                        };
 
-                        var msg = new Object();
-                        msg.type = "answer";
-                        msg.data = data;
+                        var msg = {
+                            type: "answer",
+                            data: {
+                                from: client_self.id,
+                                to: message.to,
+                                sdp: message.sdp,
+                            }
+                        };
 
                         this.wss.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
@@ -213,15 +234,14 @@ export default class CallHandler {
                     break;
                 case 'candidate':
                     {
-                        var data = {
-                            from: client_self.id,
-                            to: message.to,
-                            candidate: message.candidate,
+                        var msg = {
+                            type: "candidate",
+                            data: {
+                                from: client_self.id,
+                                to: message.to,
+                                candidate: message.candidate,
+                            }
                         };
-
-                        var msg = new Object();
-                        msg.type = "candidate";
-                        msg.data = data;
 
                         this.wss.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
