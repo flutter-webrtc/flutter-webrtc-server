@@ -2,35 +2,49 @@ import express from 'express';
 var app = express();
 import fs from 'fs';
 import ws from 'ws';
+import http from 'http';
 import https from 'https';
 
 export default class CallHandler {
 
     constructor() {
         this.wss = null;
+        this.ws = null;
+        this.clients = new Set();
         this.server = null;
+        this.ssl_server = null;
         this.sessions = [];
     }
 
     init() {
+
+        var ws_server_port = (process.env.PORT || 4442);
+        this.server = http.createServer(app).listen(ws_server_port, () => {
+            console.log("Start WS Server: bind => ws://0.0.0.0:"+ws_server_port);
+        });
+
+        this.ws = new ws.Server({ server: this.server });
+        this.ws.on('connection', this.onConnection);
+
+
         var options = {
             key: fs.readFileSync('certs/key.pem'),
             cert: fs.readFileSync('certs/cert.pem')
         };
 
-        var server_port = (process.env.PORT || 4443);
-        this.server = https.createServer(options, app).listen(server_port, () => {
-            console.log("flutter webrtc server started");
+        var wss_server_port = (process.env.PORT + 1 || 4443);
+        this.ssl_server = https.createServer(options, app).listen(wss_server_port, () => {
+            console.log("Start WSS Server: bind => wss://0.0.0.0:"+wss_server_port);
         });
 
-        this.wss = new ws.Server({ server: this.server });
+        this.wss = new ws.Server({ server: this.ssl_server });
         this.wss.on('connection', this.onConnection);
     }
 
     updatePeers = () => {
         var peers = [];
 
-        this.wss.clients.forEach(function (client) {
+        this.clients.forEach(function (client) {
             var peer = {};
             if (client.hasOwnProperty('id')) {
                 peer.id = client.id;
@@ -52,38 +66,43 @@ export default class CallHandler {
             data: peers,
         };
 
-        this.wss.clients.forEach(function (client) {
+        this.clients.forEach(function (client) {
             client.send(JSON.stringify(msg));
         });
     }
 
-    onConnection = (client_self) => {
-        console.log('connection');
-
-        client_self.on("close", data => {
-            var session_id = client_self.session_id;
-
-            //remove old session_id
-            if (session_id !== undefined) {
-                for (let i = 0; i < this.sessions.length; i++) {
-                    let item = this.sessions[i];
-                    if (item.id == session_id) {
-                        this.sessions.splice(i, 1);
-                        break;
-                    }
+    onClose = (client_self, data) => {
+        var session_id = client_self.session_id;
+        //remove old session_id
+        if (session_id !== undefined) {
+            for (let i = 0; i < this.sessions.length; i++) {
+                let item = this.sessions[i];
+                if (item.id == session_id) {
+                    this.sessions.splice(i, 1);
+                    break;
                 }
             }
-            var msg = {
-                type: "leave",
-                data: client_self.id,
-            };
+        }
+        var msg = {
+            type: "leave",
+            data: client_self.id,
+        };
 
-            this.wss.clients.forEach(function (client) {
-                if (client != client_self)
-                    client.send(JSON.stringify(msg));
-            });
+        this.clients.forEach(function (client) {
+            if (client != client_self)
+                client.send(JSON.stringify(msg));
+        });
 
-            this.updatePeers();
+        this.updatePeers();
+    }
+
+    onConnection = (client_self, socket) => {
+        console.log('connection');
+        this.clients.add(client_self);
+
+        client_self.on("close", (data) => {
+            this.clients.delete(client_self);
+            this.onClose(client_self, data)
         });
 
         client_self.on("message", message => {
@@ -123,7 +142,7 @@ export default class CallHandler {
                             return;
                         }
 
-                        this.wss.clients.forEach((client) => {
+                        this.clients.forEach((client) => {
                             if (client.session_id === message.session_id) {
                                 try {
 
@@ -146,7 +165,7 @@ export default class CallHandler {
                 case "invite":
                     {
                         var peer = null;
-                        this.wss.clients.forEach(function (client) {
+                        this.clients.forEach(function (client) {
                             if (client.hasOwnProperty('id') && client.id === "" + message.to) {
                                 peer = client;
                             }
@@ -196,7 +215,7 @@ export default class CallHandler {
                             },
                         };
 
-                        this.wss.clients.forEach(function (client) {
+                        this.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
                                 try {
                                     client.send(JSON.stringify(msg));
@@ -218,7 +237,7 @@ export default class CallHandler {
                             }
                         };
 
-                        this.wss.clients.forEach(function (client) {
+                        this.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
                                 try {
                                     client.send(JSON.stringify(msg));
@@ -240,7 +259,7 @@ export default class CallHandler {
                             }
                         };
                         
-                        this.wss.clients.forEach(function (client) {
+                        this.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
                                 try {
                                     client.send(JSON.stringify(msg));
