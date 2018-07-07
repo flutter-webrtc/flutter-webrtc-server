@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import PropTypes from "prop-types";
 import css from './layout.css';
+import VideoOffIcon from '@material-ui/icons/VideocamOff';
 
 export default class LocalVideoView extends Component {
 
@@ -37,10 +38,22 @@ export default class LocalVideoView extends Component {
             borderRadius: '4px',
         };
 
+        const videoMuteImg = {
+            display: 'block',
+            position: 'absolute',
+            top: '50%',
+            width: '100%',
+            transform: 'translateY(-50%)',
+            color:'#fff',
+          }
+
         return (
             <div key={this.props.id}
                 style={small}>
-                {this.props.muted? <img src="assets/img/camera-off.svg" className={css.videoMuteImg}/> : null}
+                {
+                   
+                    this.props.muted? <VideoOffIcon style={videoMuteImg}/> : null
+                }
                 <video ref={this.props.id} id={this.props.id} autoPlay playsInline muted="true"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', }} />
             </div>
