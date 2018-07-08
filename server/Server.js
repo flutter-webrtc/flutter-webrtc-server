@@ -72,6 +72,7 @@ export default class CallHandler {
     }
 
     onClose = (client_self, data) => {
+        console.log('close');
         var session_id = client_self.session_id;
         //remove old session_id
         if (session_id !== undefined) {
@@ -211,7 +212,7 @@ export default class CallHandler {
                             data: {
                                 from: client_self.id,
                                 to: message.to,
-                                sdp: message.sdp,
+                                description: message.description,
                             },
                         };
 
@@ -233,7 +234,7 @@ export default class CallHandler {
                             data: {
                                 from: client_self.id,
                                 to: message.to,
-                                sdp: message.sdp,
+                                description: message.description,
                             }
                         };
 

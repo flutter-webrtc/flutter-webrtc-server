@@ -71,7 +71,7 @@ class App extends Component {
     this.remoteView = null;
 
     this.state = {
-      pcPeers: {},
+      peerConnections: {},
       session_id: '0-0',
       joined: false,
       peers: [],
@@ -119,10 +119,10 @@ class App extends Component {
 
       switch (parsedMessage.type) {
         case 'invite':
-          this.onSessionInvite(parsedMessage);
+          this.onInvite(parsedMessage);
           break;
         case 'ringing':
-          this.onPeerReady(parsedMessage);
+          this.onRinging(parsedMessage);
           break;
         case 'offer':
           this.onOffer(parsedMessage);
@@ -206,7 +206,7 @@ class App extends Component {
     this.send(message);
   }
 
-  onPeerReady = (message) => {
+  onRinging = (message) => {
     var data = message.data;
     var id = data.id;
     var media = data.media;
@@ -217,7 +217,7 @@ class App extends Component {
     });
   }
 
-  onSessionInvite = (message) => {
+  onInvite = (message) => {
     var data = message.data;
     var from = data.from;
     console.log("data:" + data);
@@ -236,7 +236,7 @@ class App extends Component {
         let message = {
           type: 'offer',
           to: id,
-          sdp: pc.localDescription,
+          description: pc.localDescription,
           session_id: this.state.session_id,
         }
         this.send(message);
@@ -246,7 +246,7 @@ class App extends Component {
 
   createPC = (id, isOffer) => {
     var pc = new RTCPeerConnection(configuration);
-    this.state.pcPeers["" + id] = pc;
+    this.state.peerConnections["" + id] = pc;
     pc.onicecandidate = (event) => {
       console.log('onicecandidate', event);
       if (event.candidate) {
@@ -331,21 +331,21 @@ class App extends Component {
     console.log("data.from:" + data.from);
 
     var pc = null;
-    if (from in this.state.pcPeers) {
-      pc = this.state.pcPeers[from];
+    if (from in this.state.peerConnections) {
+      pc = this.state.peerConnections[from];
     }
-    if (pc && data.sdp) {
+    if (pc && data.description) {
       //console.log('on offer sdp', data);
-      pc.setRemoteDescription(new RTCSessionDescription(data.sdp), () => {
+      pc.setRemoteDescription(new RTCSessionDescription(data.description), () => {
         if (pc.remoteDescription.type == "offer")
           pc.createAnswer((desc) => {
-            console.log('createAnswer: ', desc.sdp);
+            console.log('createAnswer: ', desc.description);
             pc.setLocalDescription(desc, () => {
               console.log('setLocalDescription', pc.localDescription);
               let message = {
                 type: 'answer',
                 to: from,
-                sdp: pc.localDescription,
+                description: pc.localDescription,
                 session_id: this.state.session_id,
               }
               this.send(message);
@@ -360,13 +360,13 @@ class App extends Component {
     var data = message.data;
     var from = data.from;
     var pc = null;
-    if (from in this.state.pcPeers) {
-      pc = this.state.pcPeers[from];
+    if (from in this.state.peerConnections) {
+      pc = this.state.peerConnections[from];
     }
 
-    if (pc && data.sdp) {
+    if (pc && data.description) {
       //console.log('on answer sdp', data);
-      pc.setRemoteDescription(new RTCSessionDescription(data.sdp), () => {
+      pc.setRemoteDescription(new RTCSessionDescription(data.description), () => {
       }, this.logError);
     }
   }
@@ -375,8 +375,8 @@ class App extends Component {
     var data = message.data;
     var from = data.from;
     var pc = null;
-    if (from in this.state.pcPeers) {
-      pc = this.state.pcPeers[from];
+    if (from in this.state.peerConnections) {
+      pc = this.state.peerConnections[from];
     }
     if (pc && data.candidate) {
       //console.log('on candidate ', data);
@@ -387,14 +387,14 @@ class App extends Component {
   onLeave = (message) => {
     var id = message.data;
     console.log('leave', id);
-    var pcPeers = this.state.pcPeers;
-    var pc = pcPeers[id];
+    var peerConnections = this.state.peerConnections;
+    var pc = peerConnections[id];
     if (pc !== undefined) {
       pc.close();
-      delete pcPeers[id];
+      delete peerConnections[id];
       this.setState({
         joined: false,
-        pcPeers,
+        peerConnections,
         open: false,
         localStream: null,
         remoteStream: null
@@ -407,14 +407,14 @@ class App extends Component {
     var from = data.from;
     var to = data.to;
     console.log('bye: ', data.session_id);
-    var pcPeers = this.state.pcPeers;
-    var pc = pcPeers[to];
+    var peerConnections = this.state.peerConnections;
+    var pc = peerConnections[to];
     if (pc !== undefined) {
       pc.close();
-      delete pcPeers[to];
+      delete peerConnections[to];
       this.setState({
         joined: false,
-        pcPeers,
+        peerConnections,
         open: false,
         localStream: null,
         remoteStream: null
@@ -440,8 +440,8 @@ class App extends Component {
       //document.getElementById('textRoomInput').value = '';
       // var content = document.getElementById('textRoomContent');
       // content.innerHTML = content.innerHTML + '<p>' + 'Me' + ': ' + text + '</p>';
-      for (var key in this.state.pcPeers) {
-        var pc = this.state.pcPeers[key];
+      for (var key in this.state.peerConnections) {
+        var pc = this.state.peerConnections[key];
         pc.textDataChannel.send(text);
       }
     }
