@@ -139,7 +139,7 @@ export default class CallHandler {
                                     error: "Invalid session " + message.session_id,
                                 },
                             };
-                            client.send(JSON.stringify(msg));
+                            client_self.send(JSON.stringify(msg));
                             return;
                         }
 
