@@ -192,8 +192,8 @@ class App extends Component {
                 if(peer.id === this.state.self_id)
                     return null;
                 return (
-                  <div>
-                    <ListItem button>
+                  <div key={peer.id}>
+                    <ListItem button >
                       <ListItemText primary={peer.name + '  [' + peer.user_agent + ']'} secondary={'id: ' + peer.id} />
                       <IconButton color="primary" onClick={() => this.handleInvitePeer(peer.id, 'audio')} className={classes.button} aria-label="Make a voice call.">
                         <CallIcon />
