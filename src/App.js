@@ -14,7 +14,6 @@ import List from '@material-ui/core/List';
 import Divider from '@material-ui/core/Divider';
 import Dialog from '@material-ui/core/Dialog';
 import Typography from '@material-ui/core/Typography';
-import CloseIcon from '@material-ui/icons/Close';
 import Slide from '@material-ui/core/Slide';
 import VideoCamIcon from '@material-ui/icons/Videocam';
 import CallIcon from '@material-ui/icons/Call';
@@ -77,7 +76,8 @@ class App extends Component {
   }
 
   componentDidMount = () => {
-    this.signaling = new Signaling('wss://localhost:4443', "WebApp");
+    var url = 'wss://' + window.location.hostname + ':4443';
+    this.signaling = new Signaling(url, "WebApp");
     this.signaling.on('peers',(peers, self) => {
       this.setState({peers, self_id: self});
     });
