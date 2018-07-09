@@ -16,6 +16,7 @@ export default class Signaling extends events.EventEmitter {
         this.url = url;
         this.name = name;
         this.local_stream;
+        this.keepalive_cnt = 0;
 
         RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection || window.msRTCPeerConnection;
         RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription || window.webkitRTCSessionDescription || window.msRTCSessionDescription;
@@ -38,6 +39,7 @@ export default class Signaling extends events.EventEmitter {
                 id: this.self_id,
             }
             this.send(message);
+            this.wsKeepaliveTimeoutId = setInterval(this.keepAlive, 12000);
         };
 
         this.socket.onmessage = (e) => {
@@ -71,6 +73,9 @@ export default class Signaling extends events.EventEmitter {
                 case 'bye':
                     this.onBye(parsedMessage);
                     break;
+                case 'keepalive':
+                    console.log('keepalive response!');
+                    break;
                 default:
                     console.error('Unrecognized message', parsedMessage);
             }
@@ -83,6 +88,11 @@ export default class Signaling extends events.EventEmitter {
         this.socket.onclose = (e) => {
             console.log('onclose::' + e.data);
         }
+    }
+
+    keepAlive = () => {
+        this.send({ type: 'keepalive', data: {} });
+        console.log('Sent keepalive ' + ++this.keepalive_cnt + ' times!');
     }
 
     getLocalStream = (type) => {

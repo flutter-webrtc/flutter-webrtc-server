@@ -271,6 +271,9 @@ export default class CallHandler {
                         });
                     }
                     break;
+                case 'keepalive':
+                    client_self.send(JSON.stringify({type:'keepalive', data:{}}));
+                break;
                 default:
                     console.log("Unhandled message: " + message.type);
             }
