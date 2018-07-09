@@ -22,6 +22,30 @@ export default class Signaling extends events.EventEmitter {
         RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription || window.webkitRTCSessionDescription || window.msRTCSessionDescription;
         navigator.getUserMedia = navigator.getUserMedia || navigator.mozGetUserMedia || navigator.webkitGetUserMedia || navigator.msGetUserMedia;
 
+
+        if (browser.safari) {
+            var OrigPeerConnection = RTCPeerConnection;
+            RTCPeerConnection = function (pcConfig, pcConstraints) {
+                if (pcConfig && pcConfig.iceServers) {
+                    var newIceServers = [];
+                    for (var i = 0; i < pcConfig.iceServers.length; i++) {
+                        var server = pcConfig.iceServers[i];
+                        if (!server.hasOwnProperty('urls') &&
+                            server.hasOwnProperty('url')) {
+                            // utils.deprecated('RTCIceServer.url', 'RTCIceServer.urls');
+                            server = JSON.parse(JSON.stringify(server));
+                            server.urls = server.url;
+                            delete server.url;
+                            newIceServers.push(server);
+                        } else {
+                            newIceServers.push(pcConfig.iceServers[i]);
+                        }
+                    }
+                    pcConfig.iceServers = newIceServers;
+                }
+                return new OrigPeerConnection(pcConfig, pcConstraints);
+            };
+        }
         var twilioIceServers = [
             { url: 'stun:global.stun.twilio.com:3478?transport=udp' }
         ];
