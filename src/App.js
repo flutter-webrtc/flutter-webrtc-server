@@ -82,11 +82,7 @@ class App extends Component {
       this.setState({peers, self_id: self});
     });
 
-    this.signaling.on('ringing',(id) => {
-      this.setState({ open:true });
-    });
-
-    this.signaling.on('invite',(from, sessios) => {
+    this.signaling.on('new_call',(from, sessios) => {
       this.setState({ open:true });
     });
 
@@ -102,7 +98,7 @@ class App extends Component {
       this.setState({remoteStream: null});
     });
 
-    this.signaling.on('bye',(to, session) => {
+    this.signaling.on('call_end',(to, session) => {
       this.setState({ open:false, localStream: null, remoteStream: null });
     });
 
@@ -120,7 +116,7 @@ class App extends Component {
   };
 
   handleInvitePeer = (peer_id, type) => {
-    this.signaling.invitePeer(peer_id, type);
+    this.signaling.invite(peer_id, type);
   }
 
   handleBye = () => {

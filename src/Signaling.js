@@ -123,15 +123,14 @@ export default class Signaling extends events.EventEmitter {
         this.socket.send(JSON.stringify(data));
     }
 
-    invite = (peer_id, type) => {
+    invite = (peer_id, media) => {
         this.session_id = this.self_id + '-' + peer_id;
-        let message = {
-            type: 'invite',
-            session_id: this.session_id,
-            to: peer_id,
-            media: type,
-        }
-        this.send(message);
+        this.getLocalStream(media).then((stream) => {
+            this.local_stream = stream;
+            this.createPeerConnection(peer_id, media, true, stream);
+            this.emit('localstream', stream);
+            this.emit('new_call', this.self_id, this.session_id);
+        });
     }
 
     bye = () => {
@@ -143,34 +142,7 @@ export default class Signaling extends events.EventEmitter {
         this.send(message);
     }
 
-    onRinging = (message) => {
-        var data = message.data;
-        var id = data.id;
-        var media = data.media;
-        console.log("Remote peer ready: id " + id);
-        this.emit('ringing', id);
-        this.getLocalStream(media).then((stream) => {
-            this.local_stream = stream;
-            this.createPeerConnection(id, true, stream);
-            this.emit('localstream', stream);
-        });
-    }
-
-    onInvite = (message) => {
-        var data = message.data;
-        var from = data.from;
-        console.log("data:" + data);
-        var media = data.media;
-        this.session_id = data.session_id;
-        this.emit('invite', from, this.session_id);
-        this.getLocalStream(media).then((stream) => {
-            this.local_stream = stream;
-            this.emit('localstream', stream);
-            var pc = this.createPeerConnection(from, false, stream);
-        });
-    }
-
-    createOffer = (pc, id) => {
+    createOffer = (pc, id, media) => {
         pc.createOffer((desc) => {
             console.log('createOffer: ', desc.sdp);
             pc.setLocalDescription(desc, () => {
@@ -178,6 +150,7 @@ export default class Signaling extends events.EventEmitter {
                 let message = {
                     type: 'offer',
                     to: id,
+                    media: media,
                     description: pc.localDescription,
                     session_id: this.session_id,
                 }
@@ -186,7 +159,7 @@ export default class Signaling extends events.EventEmitter {
         }, this.logError);
     }
 
-    createPeerConnection = (id, isOffer, localstream) => {
+    createPeerConnection = (id, media, isOffer, localstream) => {
         var pc = new RTCPeerConnection(configuration);
         this.peer_connections["" + id] = pc;
         pc.onicecandidate = (event) => {
@@ -229,7 +202,7 @@ export default class Signaling extends events.EventEmitter {
         pc.addStream(localstream);
 
         if (isOffer)
-            this.createOffer(pc, id);
+            this.createOffer(pc, id, media);
         return pc;
     }
 
@@ -269,33 +242,36 @@ export default class Signaling extends events.EventEmitter {
     onOffer = (message) => {
         var data = message.data;
         var from = data.from;
+        console.log("data:" + data);
+        var media = data.media;
+        this.session_id = data.session_id;
+        this.emit('new_call', from, this.session_id);
 
-        console.log("data.from:" + data.from);
+        this.getLocalStream(media).then((stream) => {
+            this.local_stream = stream;
+            this.emit('localstream', stream);
+            var pc = this.createPeerConnection(from, media, false, stream);
 
-        var pc = null;
-        if (from in this.peer_connections) {
-            pc = this.peer_connections[from];
-        }
-        if (pc && data.description) {
-            //console.log('on offer sdp', data);
-            pc.setRemoteDescription(new RTCSessionDescription(data.description), () => {
-                if (pc.remoteDescription.type == "offer")
-                    pc.createAnswer((desc) => {
-                        console.log('createAnswer: ', desc.description);
-                        pc.setLocalDescription(desc, () => {
-                            console.log('setLocalDescription', pc.localDescription);
-                            let message = {
-                                type: 'answer',
-                                to: from,
-                                description: pc.localDescription,
-                                session_id: this.session_id,
-                            }
-                            this.send(message);
+            if (pc && data.description) {
+                //console.log('on offer sdp', data);
+                pc.setRemoteDescription(new RTCSessionDescription(data.description), () => {
+                    if (pc.remoteDescription.type == "offer")
+                        pc.createAnswer((desc) => {
+                            console.log('createAnswer: ', desc);
+                            pc.setLocalDescription(desc, () => {
+                                console.log('setLocalDescription', pc.localDescription);
+                                let message = {
+                                    type: 'answer',
+                                    to: from,
+                                    description: pc.localDescription,
+                                    session_id: this.session_id,
+                                }
+                                this.send(message);
+                            }, this.logError);
                         }, this.logError);
-                    }, this.logError);
-            }, this.logError);
-        }
-
+                }, this.logError);
+            }
+        });
     }
 
     onAnswer = (message) => {
@@ -305,7 +281,6 @@ export default class Signaling extends events.EventEmitter {
         if (from in this.peer_connections) {
             pc = this.peer_connections[from];
         }
-
         if (pc && data.description) {
             //console.log('on answer sdp', data);
             pc.setRemoteDescription(new RTCSessionDescription(data.description), () => {
@@ -351,7 +326,7 @@ export default class Signaling extends events.EventEmitter {
         if (pc !== undefined) {
             pc.close();
             delete peerConnections[to];
-            this.emit('bye', to, this.session_id);
+            this.emit('call_end', to, this.session_id);
         }
         if (this.local_stream != null) {
             this.closeMediaStream(this.local_stream);
@@ -362,11 +337,6 @@ export default class Signaling extends events.EventEmitter {
 
     logError = (error) => {
         console.log("logError", error);
-    }
-
-    invitePeer = (peer_id, type) => {
-        this.invite(peer_id, type);
-        this.getLocalStream(type);
     }
 
     sendText() {

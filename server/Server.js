@@ -163,7 +163,7 @@ export default class CallHandler {
                         });
                     }
                     break;
-                case "invite":
+                case "offer":
                     {
                         var peer = null;
                         this.clients.forEach(function (client) {
@@ -173,27 +173,21 @@ export default class CallHandler {
                         });
 
                         if (peer != null) {
-                            var msg = {
-                                type: "ringing",
-                                data: {
-                                    id: peer.id,
-                                    media: message.media,
-                                }
-                            };
-                            client_self.send(JSON.stringify(msg));
-                            client_self.session_id = message.session_id;
 
                             msg = {
-                                type: "invite",
+                                type: "offer",
                                 data: {
                                     to: peer.id,
                                     from: client_self.id,
                                     media: message.media,
                                     session_id: message.session_id,
+                                    description: message.description,
                                 }
                             }
                             peer.send(JSON.stringify(msg));
+                            
                             peer.session_id = message.session_id;
+                            client_self.session_id = message.session_id;
 
                             let session = {
                                 id: message.session_id,
@@ -205,28 +199,6 @@ export default class CallHandler {
 
                         break;
                     }
-                case 'offer':
-                    {
-                        var msg = {
-                            type: "offer",
-                            data: {
-                                from: client_self.id,
-                                to: message.to,
-                                description: message.description,
-                            },
-                        };
-
-                        this.clients.forEach(function (client) {
-                            if (client.id === "" + message.to && client.session_id === message.session_id) {
-                                try {
-                                    client.send(JSON.stringify(msg));
-                                } catch (e) {
-                                    console.log("onUserJoin:" + e.message);
-                                }
-                            }
-                        });
-                    }
-                    break;
                 case 'answer':
                     {
                         var msg = {
