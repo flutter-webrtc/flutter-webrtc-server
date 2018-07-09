@@ -7,7 +7,7 @@
     "start": "npm-run-all --parallel run-server run-webpack-dev-server",
     "test": "echo \"Error: no test specified\" && exit 1",
     "run-server": "node server/index.js",
-    "run-webpack-dev-server": "webpack-dev-server --https --cert ./certs/cert.pem --key ./certs/key.pem --hot --inline --progress --colors --watch --compress --content-base ./dist  --port 8086 --host 0.0.0.0"
+    "run-webpack-dev-server": "webpack-dev-server --mode development --https --cert ./certs/cert.pem --key ./certs/key.pem --hot --inline --progress --colors --watch --compress --content-base ./dist  --port 8086 --host 0.0.0.0"
   },
   "repository": {
     "type": "git",
