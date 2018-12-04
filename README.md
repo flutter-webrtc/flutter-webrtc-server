@@ -4,7 +4,7 @@ A simple WebRTC Signaling server for flutter-webrtc and html5.
 ## Usage
 - Clone the repository, run `npm install`.  
 - Run `npm start` and open https://localhost:8086 to use html5 demo. 
-- If you need to test mobile app, please check the [webrtc-flutter](https://github.com/cloudwebrtc/flutter-webrtc/tree/master/example) plug-in. 
+- If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo) plug-in. 
 
 ## screenshots
 # iOS/Android
