@@ -62,6 +62,6 @@ export default class LocalVideoView extends Component {
 }
 
 LocalVideoView.propTypes = {
-    stream: PropTypes.any.isRequired,//用户id
-    id: PropTypes.string,//用户名
+    stream: PropTypes.any.isRequired,
+    id: PropTypes.string,
 }

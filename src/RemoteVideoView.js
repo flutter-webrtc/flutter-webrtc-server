@@ -69,6 +69,6 @@ export default class RemoteVideoView extends Component {
 }
 
 RemoteVideoView.propTypes = {
-    stream: PropTypes.any.isRequired,//用户id
-    id: PropTypes.string.isRequired,//会话
+    stream: PropTypes.any.isRequired,
+    id: PropTypes.string.isRequired,
 }

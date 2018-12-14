@@ -225,8 +225,6 @@ class App extends Component {
                 this.state.localStream != null ? <LocalVideoView stream={this.state.localStream} muted={this.state.video_muted} id={'localview'} /> : null
               }
             </div>
-
-
             <div className={css.btnTools}>
               <Button variant="fab" mini color="primary" aria-label="add" style={styles.btnTool} onClick={this.onVideoOnClickHandler}>
                 {
@@ -249,7 +247,6 @@ class App extends Component {
       </MuiThemeProvider>
     );
   }
-
 }
 
 App.propTypes = {
