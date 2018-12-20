@@ -66,8 +66,9 @@ export default class CallHandler {
             data: peers,
         };
 
+        let _send = this._send;
         this.clients.forEach(function (client) {
-            client.send(JSON.stringify(msg));
+            _send(client, JSON.stringify(msg));
         });
     }
 
@@ -89,9 +90,10 @@ export default class CallHandler {
             data: client_self.id,
         };
 
+        let _send = this._send;
         this.clients.forEach(function (client) {
             if (client != client_self)
-                client.send(JSON.stringify(msg));
+            _send(client, JSON.stringify(msg));
         });
 
         this.updatePeers();
@@ -99,6 +101,9 @@ export default class CallHandler {
 
     onConnection = (client_self, socket) => {
         console.log('connection');
+
+        let _send = this._send;
+
         this.clients.add(client_self);
 
         client_self.on("close", (data) => {
@@ -139,7 +144,7 @@ export default class CallHandler {
                                     error: "Invalid session " + message.session_id,
                                 },
                             };
-                            client_self.send(JSON.stringify(msg));
+                            _send(client_self, JSON.stringify(msg));
                             return;
                         }
 
@@ -155,7 +160,7 @@ export default class CallHandler {
                                             to: (client.id == session.from ? session.to : session.from),
                                         },
                                     };
-                                    client.send(JSON.stringify(msg));
+                                    _send(client, JSON.stringify(msg));
                                 } catch (e) {
                                     console.log("onUserJoin:" + e.message);
                                 }
@@ -184,8 +189,8 @@ export default class CallHandler {
                                     description: message.description,
                                 }
                             }
-                            peer.send(JSON.stringify(msg));
-                            
+                            _send(peer, JSON.stringify(msg));
+
                             peer.session_id = message.session_id;
                             client_self.session_id = message.session_id;
 
@@ -213,7 +218,7 @@ export default class CallHandler {
                         this.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
                                 try {
-                                    client.send(JSON.stringify(msg));
+                                    _send(client, JSON.stringify(msg));
                                 } catch (e) {
                                     console.log("onUserJoin:" + e.message);
                                 }
@@ -235,7 +240,7 @@ export default class CallHandler {
                         this.clients.forEach(function (client) {
                             if (client.id === "" + message.to && client.session_id === message.session_id) {
                                 try {
-                                    client.send(JSON.stringify(msg));
+                                    _send(client, JSON.stringify(msg));
                                 } catch (e) {
                                     console.log("onUserJoin:" + e.message);
                                 }
@@ -244,12 +249,20 @@ export default class CallHandler {
                     }
                     break;
                 case 'keepalive':
-                    client_self.send(JSON.stringify({type:'keepalive', data:{}}));
+                    _send(client_self, JSON.stringify({type:'keepalive', data:{}}));
                 break;
                 default:
                     console.log("Unhandled message: " + message.type);
             }
         });
+    }
+
+    _send = (client, message) => {
+        try {
+            client.send(message);
+        }catch(e){
+            console.e("Send failure !: " + e);
+        }
     }
 }
 
