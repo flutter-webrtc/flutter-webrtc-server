@@ -185,18 +185,20 @@ class App extends Component {
           <List>
             {
               this.state.peers.map((peer, i) => {
-                if(peer.id === this.state.self_id)
-                    return null;
                 return (
                   <div key={peer.id}>
                     <ListItem button >
-                      <ListItemText primary={peer.name + '  [' + peer.user_agent + ']'} secondary={'id: ' + peer.id} />
-                      <IconButton color="primary" onClick={() => this.handleInvitePeer(peer.id, 'audio')} className={classes.button} aria-label="Make a voice call.">
-                        <CallIcon />
-                      </IconButton>
-                      <IconButton color="primary" onClick={() => this.handleInvitePeer(peer.id, 'video')} className={classes.button} aria-label="Make a video call.">
-                        <VideoCamIcon />
-                      </IconButton>
+                      <ListItemText primary={peer.name + '  [' + peer.user_agent + ']' + (peer.id === this.state.self_id ? ' (Yourself)' : '')} secondary={ (peer.id === this.state.self_id ? 'self' : 'peer') + '-id: ' + peer.id} />
+                      {peer.id !== this.state.self_id &&
+                        <div>
+                          <IconButton color="primary" onClick={() => this.handleInvitePeer(peer.id, 'audio')} className={classes.button} aria-label="Make a voice call.">
+                            <CallIcon />
+                          </IconButton>
+                          <IconButton color="primary" onClick={() => this.handleInvitePeer(peer.id, 'video')} className={classes.button} aria-label="Make a video call.">
+                            <VideoCamIcon />
+                          </IconButton>
+                        </div>
+                      }
                     </ListItem>
                     <Divider />
                   </div>
