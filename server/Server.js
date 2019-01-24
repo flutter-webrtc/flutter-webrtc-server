@@ -261,7 +261,7 @@ export default class CallHandler {
         try {
             client.send(message);
         }catch(e){
-            console.e("Send failure !: " + e);
+            console.log("Send failure !: " + e);
         }
     }
 }
