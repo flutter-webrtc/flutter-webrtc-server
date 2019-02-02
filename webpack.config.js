@@ -53,5 +53,8 @@ module.exports = {
                 collapseWhitespace: false //删除空白符与换行符
             }
         })
-    ]
+    ],
+    devServer: {
+        disableHostCheck: true,
+    }
 }
