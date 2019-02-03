@@ -4,7 +4,7 @@ var ExtractTextPlugin = require('extract-text-webpack-plugin')
 var HtmlWebpackPlugin = require('html-webpack-plugin')
 
 module.exports = {
-    devtool: 'eval', //source-map
+    devtool: 'source-map', 
     entry: {
         main: './src/index.js'
     },
@@ -49,8 +49,8 @@ module.exports = {
             template: './src/index.html',
             inject: true,
             minify: {
-                removeComments: true, //移除HTML中的注释
-                collapseWhitespace: false //删除空白符与换行符
+                removeComments: true, 
+                collapseWhitespace: false
             }
         })
     ],

@@ -4,6 +4,9 @@ import fs from 'fs';
 import ws from 'ws';
 import http from 'http';
 import https from 'https';
+import path from 'path';
+
+app.use(express.static(path.join(process.cwd(),"dist")));
 
 export default class CallHandler {
 
