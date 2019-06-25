@@ -54,7 +54,7 @@ export default class LocalVideoView extends Component {
                    
                     this.props.muted? <VideoOffIcon style={videoMuteImg}/> : null
                 }
-                <video ref={this.props.id} id={this.props.id} autoPlay playsInline muted="true"
+                <video ref={this.props.id} id={this.props.id} autoPlay playsInline muted={true}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', }} />
             </div>
         )
