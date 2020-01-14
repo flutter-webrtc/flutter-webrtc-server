@@ -1,5 +1,7 @@
 all: linux darwin windows
 
+release: all upx tar
+
 clean:
 	rm -rf bin/*
 
@@ -16,3 +18,6 @@ darwin:
 windows:
 	CGO_ENABLE=0 GOOS=windows GOARCH=amd64 go build -o bin/server-windows-amd64.exe -ldflags "-s -w"  main/server/main.go
 	CGO_ENABLE=0 GOOS=windows GOARCH=386 go build -o bin/server-windows-i386.exe -ldflags "-s -w"  main/server/main.go
+
+tar:
+	tar jcvf flutter-webrtc-server-bin.tar.bz2 bin certs html
