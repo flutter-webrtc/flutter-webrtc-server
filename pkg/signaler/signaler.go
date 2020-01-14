@@ -2,11 +2,13 @@ package signaler
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/transport"
+	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/turn"
 )
 
 func Marshal(m map[string]interface{}) string {
@@ -50,14 +52,22 @@ type Session struct {
 type Signaler struct {
 	peers    map[string]Peer
 	sessions map[string]Session
+	turn     *turn.TurnServer
 }
 
-func NewSignaler() *Signaler {
+func NewSignaler(turn *turn.TurnServer) *Signaler {
 	var signaler = &Signaler{
 		peers:    make(map[string]Peer),
 		sessions: make(map[string]Session),
+		turn:     turn,
 	}
+	signaler.turn.AuthHandler = signaler.authHandler
 	return signaler
+}
+
+func (s Signaler) authHandler(username string, realm string, srcAddr net.Addr) ([]byte, bool) {
+	// handle turn auth info.
+	return nil, false
 }
 
 func (s *Signaler) NotifyPeersUpdate(transport *transport.WebSocketTransport, peers map[string]Peer) {
@@ -71,6 +81,10 @@ func (s *Signaler) NotifyPeersUpdate(transport *transport.WebSocketTransport, pe
 	for _, peer := range peers {
 		peer.transport.Send(Marshal(request))
 	}
+}
+
+func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, request *http.Request) {
+	// return turn credentials for client.
 }
 
 func (s *Signaler) HandleNewWebSocket(transport *transport.WebSocketTransport, request *http.Request) {

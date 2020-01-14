@@ -10,32 +10,38 @@ import (
 )
 
 type WebSocketServerConfig struct {
-	Host          string
-	Port          int
-	CertFile      string
-	KeyFile       string
-	HTMLRoot      string
-	WebSocketPath string
+	Host           string
+	Port           int
+	CertFile       string
+	KeyFile        string
+	HTMLRoot       string
+	WebSocketPath  string
+	TurnServerPath string
 }
 
 func DefaultConfig() WebSocketServerConfig {
 	return WebSocketServerConfig{
-		Host:          "0.0.0.0",
-		Port:          8086,
-		HTMLRoot:      "html",
-		WebSocketPath: "/ws",
+		Host:           "0.0.0.0",
+		Port:           8086,
+		HTMLRoot:       "html",
+		WebSocketPath:  "/ws",
+		TurnServerPath: "/turnServer",
 	}
 }
 
 type WebSocketServer struct {
-	handleWebSocket func(ws *transport.WebSocketTransport, request *http.Request)
+	handleWebSocket  func(ws *transport.WebSocketTransport, request *http.Request)
+	handleTurnServer func(writer http.ResponseWriter, request *http.Request)
 	// Websocket upgrader
 	upgrader websocket.Upgrader
 }
 
-func NewWebSocketServer(handler func(ws *transport.WebSocketTransport, request *http.Request)) *WebSocketServer {
+func NewWebSocketServer(
+	wsHandler func(ws *transport.WebSocketTransport, request *http.Request),
+	turnServerHandler func(writer http.ResponseWriter, request *http.Request)) *WebSocketServer {
 	var server = &WebSocketServer{
-		handleWebSocket: handler,
+		handleWebSocket:  wsHandler,
+		handleTurnServer: turnServerHandler,
 	}
 	server.upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -57,10 +63,15 @@ func (server *WebSocketServer) handleWebSocketRequest(writer http.ResponseWriter
 	wsTransport.ReadMessage()
 }
 
+func (server *WebSocketServer) handleTurnServerRequest(writer http.ResponseWriter, request *http.Request) {
+	server.handleTurnServer(writer, request)
+}
+
 // Bind .
 func (server *WebSocketServer) Bind(cfg WebSocketServerConfig) {
 	// Websocket handle func
 	http.HandleFunc(cfg.WebSocketPath, server.handleWebSocketRequest)
+	http.HandleFunc(cfg.TurnServerPath, server.handleTurnServerRequest)
 	http.Handle("/", http.FileServer(http.Dir(cfg.HTMLRoot)))
 	logger.Infof("WebSocketServer listening on: %s:%d", cfg.Host, cfg.Port)
 	// http.ListenAndServe(cfg.Host+":"+strconv.Itoa(cfg.Port), nil)
