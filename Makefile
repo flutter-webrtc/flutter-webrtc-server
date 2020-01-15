@@ -20,4 +20,4 @@ windows:
 	CGO_ENABLE=0 GOOS=windows GOARCH=386 go build -o bin/server-windows-i386.exe -ldflags "-s -w"  main/server/main.go
 
 tar:
-	tar jcvf flutter-webrtc-server-bin.tar.bz2 bin certs html
+	tar jcvf flutter-webrtc-server-bin.tar.bz2 bin certs html config

@@ -7,4 +7,6 @@ require (
 	github.com/gorilla/websocket v1.4.1
 	github.com/pion/turn/v2 v2.0.1
 	github.com/rs/zerolog v1.14.3
+	github.com/smartystreets/goconvey v1.6.4 // indirect
+	gopkg.in/ini.v1 v1.51.1
 )
