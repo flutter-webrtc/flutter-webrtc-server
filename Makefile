@@ -1,6 +1,6 @@
 all: linux darwin windows
 
-release: all upx tar
+release: all tar
 
 clean:
 	rm -rf bin/*

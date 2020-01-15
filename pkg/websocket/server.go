@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/transport"
 	"github.com/gorilla/websocket"
 )
 
@@ -30,14 +29,14 @@ func DefaultConfig() WebSocketServerConfig {
 }
 
 type WebSocketServer struct {
-	handleWebSocket  func(ws *transport.WebSocketTransport, request *http.Request)
+	handleWebSocket  func(ws *WebSocketConn, request *http.Request)
 	handleTurnServer func(writer http.ResponseWriter, request *http.Request)
 	// Websocket upgrader
 	upgrader websocket.Upgrader
 }
 
 func NewWebSocketServer(
-	wsHandler func(ws *transport.WebSocketTransport, request *http.Request),
+	wsHandler func(ws *WebSocketConn, request *http.Request),
 	turnServerHandler func(writer http.ResponseWriter, request *http.Request)) *WebSocketServer {
 	var server = &WebSocketServer{
 		handleWebSocket:  wsHandler,
@@ -56,9 +55,9 @@ func (server *WebSocketServer) handleWebSocketRequest(writer http.ResponseWriter
 	//responseHeader.Add("Sec-WebSocket-Protocol", "protoo")
 	socket, err := server.upgrader.Upgrade(writer, request, responseHeader)
 	if err != nil {
-		panic(err)
+		logger.Panicf("%v", err)
 	}
-	wsTransport := transport.NewWebSocketTransport(socket)
+	wsTransport := NewWebSocketConn(socket)
 	server.handleWebSocket(wsTransport, request)
 	wsTransport.ReadMessage()
 }
