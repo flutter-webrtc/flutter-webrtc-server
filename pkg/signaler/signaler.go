@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/mux"
+
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/turn"
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/websocket"
@@ -83,8 +85,35 @@ func (s *Signaler) NotifyPeersUpdate(conn *websocket.WebSocketConn, peers map[st
 	}
 }
 
+// HandleTurnServerCredentials
+// https://tools.ietf.org/html/draft-uberti-behave-turn-rest-00
 func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, request *http.Request) {
-	// return turn credentials for client.
+	writer.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(request) //Get params
+	service := params["service"]
+	if service != "turn" {
+		return
+	}
+	/*
+		username := params["username"]
+
+		//key := params["key"]
+		timestamp := time.Now().Unix()
+		turnUserName := string(timestamp) + ":" + username
+		// credential = base64(hmac(key, turn_username))
+		credential := ""
+
+				{
+			     "username" : "12334939:mbzrxpgjys",
+			     "password" : "adfsaflsjfldssia",
+			     "ttl" : 86400,
+			     "uris" : [
+			       "turn:1.2.3.4:9991?transport=udp",
+				 ]
+				}
+	*/
+	//tuts := make(map[string]interface{})
+	json.NewEncoder(writer).Encode(params)
 }
 
 func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *http.Request) {
@@ -95,7 +124,6 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 		switch request["type"] {
 		case "new":
 			{
-
 				peer := Peer{
 					conn: conn,
 					info: PeerInfo{

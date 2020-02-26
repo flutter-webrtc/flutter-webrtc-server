@@ -22,9 +22,9 @@ func DefaultConfig() WebSocketServerConfig {
 	return WebSocketServerConfig{
 		Host:           "0.0.0.0",
 		Port:           8086,
-		HTMLRoot:       "html",
+		HTMLRoot:       "web",
 		WebSocketPath:  "/ws",
-		TurnServerPath: "/turnServer",
+		TurnServerPath: "/api/turn",
 	}
 }
 
@@ -72,7 +72,7 @@ func (server *WebSocketServer) Bind(cfg WebSocketServerConfig) {
 	http.HandleFunc(cfg.WebSocketPath, server.handleWebSocketRequest)
 	http.HandleFunc(cfg.TurnServerPath, server.handleTurnServerRequest)
 	http.Handle("/", http.FileServer(http.Dir(cfg.HTMLRoot)))
-	logger.Infof("WebSocketServer listening on: %s:%d", cfg.Host, cfg.Port)
+	logger.Infof("Flutter WebRTC Server listening on: %s:%d", cfg.Host, cfg.Port)
 	// http.ListenAndServe(cfg.Host+":"+strconv.Itoa(cfg.Port), nil)
 	panic(http.ListenAndServeTLS(cfg.Host+":"+strconv.Itoa(cfg.Port), cfg.CertFile, cfg.KeyFile, nil))
 }

@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-	cfg, err := ini.Load("config/config.ini")
+	cfg, err := ini.Load("configs/config.ini")
 	if err != nil {
 		logger.Errorf("Fail to read file: %v", err)
 		os.Exit(1)
