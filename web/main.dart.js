@@ -43810,7 +43810,7 @@ case 3:return P.L(null,t)}})
 return P.M($async$hp,t)},
 ft:function(){var u=0,t=P.N(null),s=this,r,q
 var $async$ft=P.I(function(a,b){if(a===1)return P.K(b,t)
-while(true)switch(u){case 0:q="wss://"+H.d(s.d)+":4443/ws"
+while(true)switch(u){case 0:q="wss://"+H.d(s.d)+":8086/ws"
 s.b=new M.KV(q)
 P.at("connect to "+q)
 r=s.b
