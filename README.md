@@ -5,6 +5,27 @@ A simple WebRTC Signaling server for flutter-webrtc and html5.
 Chrome/Firefox/Safari
 
 ## Usage
+
+### Setup from Binary
+- Download
+```bash
+wget https://github.com/cloudwebrtc/flutter-webrtc-server/releases/download/1.0/flutter-webrtc-server-bin-1.0.zip
+mkdir flutter-webrtc-server
+unzip flutter-webrtc-server-bin-1.0.zip -d flutter-webrtc-server
+cd 
+```
+- Run
+```bash
+cd flutter-webrtc-server
+# for macOS
+./bin/server-darwin-amd64
+# for Linux
+./bin/server-linux-amd64
+# for Windows
+./bin/server-windows-i386.exe
+```
+
+### Compile from Source
 - Clone the repository, run `make`.  
 - Run `./bin/server-{platform}-{arch}` and open https://your_sever_ip_or_domain:4443 to use html5 demo.
 - If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo/tree/golang). 
