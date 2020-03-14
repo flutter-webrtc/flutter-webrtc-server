@@ -32,11 +32,13 @@ if key, ok := usersMap[username]; ok {
 type TurnServer struct {
 	udpListener net.PacketConn
 	turnServer  *turn.Server
+	Config      TurnServerConfig
 	AuthHandler func(username string, realm string, srcAddr net.Addr) ([]byte, bool)
 }
 
 func NewTurnServer(config TurnServerConfig) *TurnServer {
 	server := &TurnServer{
+		Config:      config,
 		AuthHandler: nil,
 	}
 	if len(config.PublicIP) == 0 {
