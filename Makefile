@@ -1,9 +1,11 @@
+VERSION=$(shell git describe --tags)
+
 all: linux darwin windows
 
-release: all tar
+release: all zip
 
 clean:
-	rm -rf bin/*
+	rm -rf bin/* *.zip
 
 upx:
 	upx -9 bin/*
@@ -19,5 +21,5 @@ windows:
 	CGO_ENABLE=0 GOOS=windows GOARCH=amd64 go build -o bin/server-windows-amd64.exe -ldflags "-s -w" cmd/server/main.go
 	CGO_ENABLE=0 GOOS=windows GOARCH=386 go build -o bin/server-windows-i386.exe -ldflags "-s -w" cmd/server/main.go
 
-tar:
-	tar jcvf flutter-webrtc-server-bin.tar.bz2 bin configs web
+zip:
+	zip -r fws-webrtc-server-bin-${VERSION}.zip bin configs web
