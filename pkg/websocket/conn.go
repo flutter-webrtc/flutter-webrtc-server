@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"errors"
+	"net"
 	"sync"
 	"time"
 
@@ -46,7 +47,11 @@ func (conn *WebSocketConn) ReadMessage() {
 			if err != nil {
 				logger.Warnf("Got error: %v", err)
 				if c, k := err.(*websocket.CloseError); k {
-					conn.Emit("error", c.Code, c.Text)
+					conn.Emit("close", c.Code, c.Text)
+				} else {
+					if c, k := err.(*net.OpError); k {
+						conn.Emit("close", 1008, c.Error())
+					}
 				}
 				close(stop)
 				break
