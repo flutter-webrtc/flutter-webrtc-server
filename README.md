@@ -12,7 +12,6 @@ Chrome/Firefox/Safari
 wget https://github.com/cloudwebrtc/flutter-webrtc-server/releases/download/1.0/flutter-webrtc-server-bin-1.0.zip
 mkdir flutter-webrtc-server
 unzip flutter-webrtc-server-bin-1.0.zip -d flutter-webrtc-server
-cd 
 ```
 - Run
 ```bash
