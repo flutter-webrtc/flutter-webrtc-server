@@ -112,6 +112,7 @@ func (s *Signaler) NotifyPeersUpdate(conn *websocket.WebSocketConn, peers map[st
 // https://tools.ietf.org/html/draft-uberti-behave-turn-rest-00
 func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Access-Control-Allow-Origin", "*")
 
 	params, err := url.ParseQuery(request.URL.RawQuery)
 	if err != nil {
