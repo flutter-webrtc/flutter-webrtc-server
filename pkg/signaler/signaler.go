@@ -1,17 +1,33 @@
 package signaler
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
-
-	"github.com/gorilla/mux"
+	"time"
 
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/turn"
+	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/util"
 	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/websocket"
 )
+
+const (
+	sharedKey = `flutter-webrtc-turn-server-shared-key`
+)
+
+type TurnCredentials struct {
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	TTL      int      `json:"ttl"`
+	Uris     []string `json:"uris"`
+}
 
 func Marshal(m map[string]interface{}) string {
 	if byt, err := json.Marshal(m); err != nil {
@@ -52,26 +68,33 @@ type Session struct {
 }
 
 type Signaler struct {
-	peers    map[string]Peer
-	sessions map[string]Session
-	turn     *turn.TurnServer
+	peers     map[string]Peer
+	sessions  map[string]Session
+	turn      *turn.TurnServer
+	expresMap *util.ExpiredMap
 }
 
 func NewSignaler(turn *turn.TurnServer) *Signaler {
 	var signaler = &Signaler{
-		peers:    make(map[string]Peer),
-		sessions: make(map[string]Session),
-		turn:     turn,
+		peers:     make(map[string]Peer),
+		sessions:  make(map[string]Session),
+		turn:      turn,
+		expresMap: util.NewExpiredMap(),
 	}
 	signaler.turn.AuthHandler = signaler.authHandler
 	return signaler
 }
 
 func (s Signaler) authHandler(username string, realm string, srcAddr net.Addr) ([]byte, bool) {
-	// handle turn auth info.
+	// handle turn credential.
+	if found, info := s.expresMap.Get(username); found {
+		credential := info.(TurnCredentials)
+		return []byte(credential.Password), true
+	}
 	return nil, false
 }
 
+// NotifyPeersUpdate .
 func (s *Signaler) NotifyPeersUpdate(conn *websocket.WebSocketConn, peers map[string]Peer) {
 	infos := []PeerInfo{}
 	for _, peer := range peers {
@@ -85,35 +108,58 @@ func (s *Signaler) NotifyPeersUpdate(conn *websocket.WebSocketConn, peers map[st
 	}
 }
 
-// HandleTurnServerCredentials
+// HandleTurnServerCredentials .
 // https://tools.ietf.org/html/draft-uberti-behave-turn-rest-00
 func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(request) //Get params
-	service := params["service"]
+
+	params, err := url.ParseQuery(request.URL.RawQuery)
+	if err != nil {
+
+	}
+	logger.Debugf("%v", params)
+	service := params["service"][0]
 	if service != "turn" {
 		return
 	}
+	username := params["username"][0]
+	timestamp := time.Now().Unix()
+	turnUsername := fmt.Sprintf("%d:%s", timestamp, username)
+	hmac := hmac.New(sha1.New, []byte(sharedKey))
+	hmac.Write([]byte(turnUsername))
+	turnPassword := base64.StdEncoding.EncodeToString(hmac.Sum(nil))
 	/*
-		username := params["username"]
+		{
+		     "username" : "12334939:mbzrxpgjys",
+		     "password" : "adfsaflsjfldssia",
+		     "ttl" : 86400,
+		     "uris" : [
+		       "turn:1.2.3.4:9991?transport=udp",
+		       "turn:1.2.3.4:9992?transport=tcp",
+		       "turns:1.2.3.4:443?transport=tcp"
+			 ]
+		}
+		For client pc.
+		var iceServer = {
+			"username": response.username,
+			"credential": response.password,
+			"uris": response.uris
+		};
+		var config = {"iceServers": [iceServer]};
+		var pc = new RTCPeerConnection(config);
 
-		//key := params["key"]
-		timestamp := time.Now().Unix()
-		turnUserName := string(timestamp) + ":" + username
-		// credential = base64(hmac(key, turn_username))
-		credential := ""
-
-				{
-			     "username" : "12334939:mbzrxpgjys",
-			     "password" : "adfsaflsjfldssia",
-			     "ttl" : 86400,
-			     "uris" : [
-			       "turn:1.2.3.4:9991?transport=udp",
-				 ]
-				}
 	*/
-	//tuts := make(map[string]interface{})
-	json.NewEncoder(writer).Encode(params)
+	ttl := 86400
+	credential := TurnCredentials{
+		Username: turnUsername,
+		Password: turnPassword,
+		TTL:      ttl,
+		Uris: []string{
+			"turn:1.2.3.4:19302?transport=udp",
+		},
+	}
+	s.expresMap.Set(turnUsername, credential, int64(ttl))
+	json.NewEncoder(writer).Encode(credential)
 }
 
 func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *http.Request) {
