@@ -29,9 +29,11 @@ cd flutter-webrtc-server
 ./bin/server-windows-i386.exe
 ```
 
+Open https://0.0.0.0:8086.
+
 ### Compile from Source
 - Clone the repository, run `make`.  
-- Run `./bin/server-{platform}-{arch}` and open https://your_sever_ip_or_domain:4443 to use html5 demo.
+- Run `./bin/server-{platform}-{arch}` and open https://0.0.0.0:8086 to use html5 demo.
 - If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo/tree/golang). 
 
 ## Note
