@@ -22,4 +22,4 @@ windows:
 	CGO_ENABLE=0 GOOS=windows GOARCH=386 go build -o bin/server-windows-i386.exe -ldflags "-s -w" cmd/server/main.go
 
 zip:
-	zip -r fws-webrtc-server-bin-${VERSION}.zip bin configs web
+	zip -r flutter-webrtc-server-bin-${VERSION}.zip bin configs web
