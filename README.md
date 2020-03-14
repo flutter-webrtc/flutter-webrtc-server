@@ -5,7 +5,7 @@ A simple WebRTC Signaling server for flutter-webrtc and html5.
 - Support Windows/Linux/macOS
 - Built-in web, signaling, [turn server](https://github.com/pion/turn/tree/master/examples/turn-server)
 - Support [REST API For Access To TURN Services](https://tools.ietf.org/html/draft-uberti-behave-turn-rest-00)
-- Use [flutter-webrtc-demo for](https://github.com/cloudwebrtc/flutter-webrtc-demo) all platforms.
+- Use [flutter-webrtc-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo) for all platforms.
 
 ## Usage
 
