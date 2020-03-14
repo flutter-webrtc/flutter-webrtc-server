@@ -85,13 +85,13 @@ func NewSignaler(turn *turn.TurnServer) *Signaler {
 	return signaler
 }
 
-func (s Signaler) authHandler(username string, realm string, srcAddr net.Addr) ([]byte, bool) {
+func (s Signaler) authHandler(username string, realm string, srcAddr net.Addr) (string, bool) {
 	// handle turn credential.
 	if found, info := s.expresMap.Get(username); found {
 		credential := info.(TurnCredentials)
-		return []byte(credential.Password), true
+		return credential.Password, true
 	}
-	return nil, false
+	return "", false
 }
 
 // NotifyPeersUpdate .
@@ -127,7 +127,7 @@ func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, reque
 	turnUsername := fmt.Sprintf("%d:%s", timestamp, username)
 	hmac := hmac.New(sha1.New, []byte(sharedKey))
 	hmac.Write([]byte(turnUsername))
-	turnPassword := base64.StdEncoding.EncodeToString(hmac.Sum(nil))
+	turnPassword := base64.RawStdEncoding.EncodeToString(hmac.Sum(nil))
 	/*
 		{
 		     "username" : "12334939:mbzrxpgjys",

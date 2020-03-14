@@ -33,7 +33,7 @@ type TurnServer struct {
 	udpListener net.PacketConn
 	turnServer  *turn.Server
 	Config      TurnServerConfig
-	AuthHandler func(username string, realm string, srcAddr net.Addr) ([]byte, bool)
+	AuthHandler func(username string, realm string, srcAddr net.Addr) (string, bool)
 }
 
 func NewTurnServer(config TurnServerConfig) *TurnServer {
@@ -72,7 +72,9 @@ func NewTurnServer(config TurnServerConfig) *TurnServer {
 
 func (s *TurnServer) HandleAuthenticate(username string, realm string, srcAddr net.Addr) ([]byte, bool) {
 	if s.AuthHandler != nil {
-		return s.AuthHandler(username, realm, srcAddr)
+		if password, ok := s.AuthHandler(username, realm, srcAddr); ok {
+			return turn.GenerateAuthKey(username, realm, password), true
+		}
 	}
 	return nil, false
 }
