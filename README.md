@@ -7,7 +7,7 @@ Chrome/Firefox/Safari
 ## Usage
 - Clone the repository, run `make`.  
 - Run `./bin/server-{platform}-{arch}` and open https://your_sever_ip_or_domain:4443 to use html5 demo.
-- If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo). 
+- If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo/tree/golang). 
 
 ## Note
 This example can only be used for LAN testing. If you need to use it in a production environment, you need more testing and and deploy an available turn server.
