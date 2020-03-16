@@ -195,6 +195,11 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 			fallthrough
 		case "candidate":
 			{
+				if _, ok := data["to"]; !ok {
+					logger.Errorf("No to id found!")
+					return
+				}
+
 				To := data["to"].(string)
 				if peer, ok := s.peers[To]; !ok {
 					msg := map[string]interface{}{
@@ -213,6 +218,11 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 			break
 		case "bye":
 			{
+				if _, ok := data["session_id"]; !ok {
+					logger.Errorf("No session_id found!")
+					return
+				}
+
 				sessionID := data["session_id"].(string)
 				ids := strings.Split(sessionID, "-")
 				if len(ids) != 2 {
