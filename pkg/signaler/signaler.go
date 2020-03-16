@@ -38,13 +38,13 @@ func Marshal(m map[string]interface{}) string {
 	}
 }
 
-func Unmarshal(str string) map[string]interface{} {
+func Unmarshal(str string) (map[string]interface{}, error) {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(str), &data); err != nil {
 		logger.Errorf(err.Error())
-		return data
+		return nil, err
 	}
-	return data
+	return data, nil
 }
 
 // PeerInfo .
@@ -167,7 +167,11 @@ func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, reque
 func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *http.Request) {
 	logger.Infof("On Open %v", request)
 	conn.On("message", func(message []byte) {
-		request := Unmarshal(string(message))
+		request, err := Unmarshal(string(message))
+		if err != nil {
+			logger.Errorf("Unmarshal error %v", err)
+			return
+		}
 		data := request["data"].(map[string]interface{})
 		switch request["type"] {
 		case "new":
