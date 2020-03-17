@@ -172,7 +172,13 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 			logger.Errorf("Unmarshal error %v", err)
 			return
 		}
-		data := request["data"].(map[string]interface{})
+		var data map[string]interface{} = nil
+		tmp, found := request["data"]
+		if !found {
+			logger.Errorf("No data struct found!")
+			return
+		}
+		data = tmp.(map[string]interface{})
 		switch request["type"] {
 		case "new":
 			{
