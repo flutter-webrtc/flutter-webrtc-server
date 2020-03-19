@@ -205,18 +205,18 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 			fallthrough
 		case "candidate":
 			{
-				if _, ok := data["to"]; !ok {
+				if to, ok := data["to"]; !ok || to == nil {
 					logger.Errorf("No to id found!")
 					return
 				}
 
-				To := data["to"].(string)
-				if peer, ok := s.peers[To]; !ok {
+				to := data["to"].(string)
+				if peer, ok := s.peers[to]; !ok {
 					msg := map[string]interface{}{
 						"type": "error",
 						"data": map[string]interface{}{
 							"request": request["type"],
-							"reason":  "Peer [" + To + "] not found ",
+							"reason":  "Peer [" + to + "] not found ",
 						},
 					}
 					conn.Send(Marshal(msg))
@@ -228,7 +228,7 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 			break
 		case "bye":
 			{
-				if _, ok := data["session_id"]; !ok {
+				if id, ok := data["session_id"]; !ok || id == nil {
 					logger.Errorf("No session_id found!")
 					return
 				}
