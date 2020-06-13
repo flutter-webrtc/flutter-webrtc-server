@@ -306,13 +306,28 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 
 	conn.On("close", func(code int, text string) {
 		logger.Infof("On Close %v", conn)
+		var peer_id string = ""
+
 		for _, peer := range s.peers {
+
 			if peer.conn == conn {
-				logger.Infof("Remove peer %s", peer.info.ID)
-				delete(s.peers, peer.info.ID)
-				break
+				peer_id = peer.info.ID;
+			}else{
+				leave := map[string]interface{}{
+					"type": "leave",
+					"data": peer.info.ID,
+				}
+				peer.conn.Send(Marshal(leave))
 			}
 		}
+
+		logger.Infof("Remove peer %s", peer_id)
+		if(peer_id == "") {
+			logger.Infof("Leve peer id not found")
+			return
+		}
+		delete(s.peers, peer_id)
+
 		s.NotifyPeersUpdate(conn, s.peers)
 	})
 }
