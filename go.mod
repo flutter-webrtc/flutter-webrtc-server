@@ -9,5 +9,5 @@ require (
 	github.com/pion/turn/v2 v2.0.3
 	github.com/rs/zerolog v1.14.3
 	github.com/smartystreets/goconvey v1.6.4 // indirect
-	gopkg.in/ini.v1 v1.61.0
+	gopkg.in/ini.v1 v1.62.0
 )
