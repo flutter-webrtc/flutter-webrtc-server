@@ -11,29 +11,17 @@ Online Demo: https://demo.cloudwebrtc.com:8086/
 
 ## Usage
 
-### Setup from Binary
-- Download
+### Run from source
+
+- Clone the repository, and run.  
+
 ```bash
-wget https://github.com/cloudwebrtc/flutter-webrtc-server/releases/download/1.0/flutter-webrtc-server-bin-1.0.zip
-mkdir flutter-webrtc-server
-unzip flutter-webrtc-server-bin-1.0.zip -d flutter-webrtc-server
-```
-- Run
-```bash
+git clone https://github.com/cloudwebrtc/flutter-webrtc-server.git
 cd flutter-webrtc-server
-# for macOS
-./bin/server-darwin-amd64
-# for Linux
-./bin/server-linux-amd64
-# for Windows
-./bin/server-windows-i386.exe
+go run cmd/server/main.go
 ```
 
-Open https://0.0.0.0:8086.
-
-### Compile from Source
-- Clone the repository, run `make`.  
-- Run `./bin/server-{platform}-{arch}` and open https://0.0.0.0:8086 to use html5 demo.
+- Open https://0.0.0.0:8086 to use flutter web demo.
 - If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo). 
 
 ## Note
