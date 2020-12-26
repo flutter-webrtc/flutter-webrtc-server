@@ -25,7 +25,7 @@ go run cmd/server/main.go
 - If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo). 
 
 ## Note
-This example can only be used for LAN testing. If you need to use it in a production environment, you need more testing and and deploy an available turn server.
+If you need to use it in a production environment, you need more testing.
 
 ## screenshots
 # iOS/Android
