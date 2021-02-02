@@ -29,13 +29,6 @@ type TurnCredentials struct {
 	Uris     []string `json:"uris"`
 }
 
-// PeerInfo .
-type PeerInfo struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	UserAgent string `json:"user_agent"`
-}
-
 // Peer .
 type Peer struct {
 	info PeerInfo
@@ -66,9 +59,9 @@ type Request struct {
 	Data interface{} `json:"data"`
 }
 
-type Login struct {
-	Name      string `json:"name"`
+type PeerInfo struct {
 	ID        string `json:"id"`
+	Name      string `json:"name"`
 	UserAgent string `json:"user_agent"`
 }
 
@@ -219,28 +212,19 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 
 		switch request.Type {
 		case New:
-			{
-				var login Login
-				err := json.Unmarshal(body, &login)
-				if err != nil {
-					logger.Errorf("Unmarshal login error %v", err)
-					return
-				}
-
-				peer := Peer{
-					conn: conn,
-					info: PeerInfo{
-						ID:        login.ID,
-						Name:      login.Name,
-						UserAgent: login.UserAgent,
-					},
-				}
-				s.peers[peer.info.ID] = peer
-				s.NotifyPeersUpdate(conn, s.peers)
+			var info PeerInfo
+			err := json.Unmarshal(body, &info)
+			if err != nil {
+				logger.Errorf("Unmarshal login error %v", err)
+				return
 			}
+			s.peers[info.ID] = Peer{
+				conn: conn,
+				info: info,
+			}
+			s.NotifyPeersUpdate(conn, s.peers)
 			break
 		case Leave:
-			break
 		case Offer:
 			fallthrough
 		case Answer:
@@ -270,81 +254,59 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 			}
 			break
 		case Bye:
-			{
-				var bye Byebye
-				err := json.Unmarshal(body, &bye)
-				if err != nil {
-					logger.Errorf("Unmarshal bye got error %v", err)
-					return
-				}
-
-				ids := strings.Split(bye.SessionID, "-")
-				if len(ids) != 2 {
-					msg := Request{
-						Type: "error",
-						Data: Error{
-							Request: string(request.Type),
-							Reason:  "Invalid session [" + bye.SessionID + "]",
-						},
-					}
-					s.Send(conn, msg)
-					return
-				}
-				if peer, ok := s.peers[ids[0]]; !ok {
-					msg := Request{
-						Type: "error",
-						Data: Error{
-							Request: string(request.Type),
-							Reason:  "Peer [" + ids[0] + "] not found.",
-						},
-					}
-					s.Send(conn, msg)
-					return
-				} else {
-					bye := Request{
-						Type: "bye",
-						Data: map[string]interface{}{
-							"to":         ids[0],
-							"session_id": bye.SessionID,
-						},
-					}
-					s.Send(peer.conn, bye)
-				}
-
-				if peer, ok := s.peers[ids[1]]; !ok {
-					msg := Request{
-						Type: "error",
-						Data: Error{
-							Request: string(request.Type),
-							Reason:  "Peer [" + ids[0] + "] not found ",
-						},
-					}
-					s.Send(conn, msg)
-					return
-				} else {
-					bye := Request{
-						Type: "bye",
-						Data: map[string]interface{}{
-							"to":         ids[1],
-							"session_id": bye.SessionID,
-						},
-					}
-					s.Send(peer.conn, bye)
-				}
+			var bye Byebye
+			err := json.Unmarshal(body, &bye)
+			if err != nil {
+				logger.Errorf("Unmarshal bye got error %v", err)
+				return
 			}
-			break
+
+			ids := strings.Split(bye.SessionID, "-")
+			if len(ids) != 2 {
+				msg := Request{
+					Type: "error",
+					Data: Error{
+						Request: string(request.Type),
+						Reason:  "Invalid session [" + bye.SessionID + "]",
+					},
+				}
+				s.Send(conn, msg)
+				return
+			}
+
+			sendBye := func(id string) {
+				peer, ok := s.peers[id]
+
+				if !ok {
+					msg := Request{
+						Type: "error",
+						Data: Error{
+							Request: string(request.Type),
+							Reason:  "Peer [" + id + "] not found.",
+						},
+					}
+					s.Send(conn, msg)
+					return
+				}
+				bye := Request{
+					Type: "bye",
+					Data: map[string]interface{}{
+						"to":         id,
+						"session_id": bye.SessionID,
+					},
+				}
+				s.Send(peer.conn, bye)
+			}
+
+			// send to aleg
+			sendBye(ids[0])
+			//send to bleg
+			sendBye(ids[1])
+
 		case Keepalive:
-			keepalive := Request{
-				Type: request.Type,
-				Data: make(map[string]interface{}),
-			}
-			s.Send(conn, keepalive)
-			break
+			s.Send(conn, request)
 		default:
-			{
-				logger.Warnf("Unkown request %v", request)
-			}
-			break
+			logger.Warnf("Unkown request %v", request)
 		}
 	})
 
