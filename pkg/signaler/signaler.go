@@ -29,24 +29,6 @@ type TurnCredentials struct {
 	Uris     []string `json:"uris"`
 }
 
-func Marshal(m map[string]interface{}) string {
-	if byt, err := json.Marshal(m); err != nil {
-		logger.Errorf(err.Error())
-		return ""
-	} else {
-		return string(byt)
-	}
-}
-
-func Unmarshal(str string) (map[string]interface{}, error) {
-	var data map[string]interface{}
-	if err := json.Unmarshal([]byte(str), &data); err != nil {
-		logger.Errorf(err.Error())
-		return nil, err
-	}
-	return data, nil
-}
-
 // PeerInfo .
 type PeerInfo struct {
 	ID        string `json:"id"`
@@ -65,6 +47,45 @@ type Session struct {
 	id   string
 	from Peer
 	to   Peer
+}
+
+type Method string
+
+const (
+	New       Method = "new"
+	Bye       Method = "bye"
+	Offer     Method = "offer"
+	Answer    Method = "answer"
+	Candidate Method = "candidate"
+	Leave     Method = "leave"
+	Keepalive Method = "keepalive"
+)
+
+type Request struct {
+	Type Method      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+type Login struct {
+	Name      string `json:"name"`
+	ID        string `json:"id"`
+	UserAgent string `json:"user_agent"`
+}
+
+type Negotiation struct {
+	From      string `json:"from"`
+	To        string `json:"to"`
+	SessionID string `json:"session_id"`
+}
+
+type Byebye struct {
+	SessionID string `json:"session_id"`
+	From      string `json:"from"`
+}
+
+type Error struct {
+	Request string `json:"request"`
+	Reason  string `json:"reason"`
 }
 
 type Signaler struct {
@@ -100,11 +121,13 @@ func (s *Signaler) NotifyPeersUpdate(conn *websocket.WebSocketConn, peers map[st
 	for _, peer := range peers {
 		infos = append(infos, peer.info)
 	}
-	request := make(map[string]interface{})
-	request["type"] = "peers"
-	request["data"] = infos
+
+	request := Request{
+		Type: "peers",
+		Data: infos,
+	}
 	for _, peer := range peers {
-		peer.conn.Send(Marshal(request))
+		s.Send(peer.conn, request)
 	}
 }
 
@@ -164,137 +187,158 @@ func (s *Signaler) HandleTurnServerCredentials(writer http.ResponseWriter, reque
 	json.NewEncoder(writer).Encode(credential)
 }
 
+func (s *Signaler) Send(conn *websocket.WebSocketConn, m interface{}) error {
+	data, err := json.Marshal(m)
+	if err != nil {
+		logger.Errorf(err.Error())
+		return err
+	}
+	return conn.Send(string(data))
+}
+
 func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *http.Request) {
 	logger.Infof("On Open %v", request)
 	conn.On("message", func(message []byte) {
-		request, err := Unmarshal(string(message))
+		logger.Infof("On message %v", string(message))
+		var body json.RawMessage
+		request := Request{
+			Data: &body,
+		}
+		err := json.Unmarshal(message, &request)
 		if err != nil {
 			logger.Errorf("Unmarshal error %v", err)
 			return
 		}
-		var data map[string]interface{} = nil
-		tmp, found := request["data"]
-		if !found {
-			logger.Errorf("No data struct found!")
+
+		var data map[string]interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			logger.Errorf("Unmarshal error %v", err)
 			return
 		}
-		data = tmp.(map[string]interface{})
-		switch request["type"] {
-		case "new":
+
+		switch request.Type {
+		case New:
 			{
+				var login Login
+				err := json.Unmarshal(body, &login)
+				if err != nil {
+					logger.Errorf("Unmarshal login error %v", err)
+					return
+				}
+
 				peer := Peer{
 					conn: conn,
 					info: PeerInfo{
-						ID:        data["id"].(string),
-						Name:      data["name"].(string),
-						UserAgent: data["user_agent"].(string),
+						ID:        login.ID,
+						Name:      login.Name,
+						UserAgent: login.UserAgent,
 					},
 				}
 				s.peers[peer.info.ID] = peer
 				s.NotifyPeersUpdate(conn, s.peers)
 			}
 			break
-		case "leave":
-			{
-
-			}
+		case Leave:
 			break
-		case "offer":
+		case Offer:
 			fallthrough
-		case "answer":
+		case Answer:
 			fallthrough
-		case "candidate":
+		case Candidate:
 			{
-				if to, ok := data["to"]; !ok || to == nil {
-					logger.Errorf("No to id found!")
+				var negotiation Negotiation
+				err := json.Unmarshal(body, &negotiation)
+				if err != nil {
+					logger.Errorf("Unmarshal "+string(request.Type)+" got error %v", err)
 					return
 				}
-
-				to := data["to"].(string)
-				if peer, ok := s.peers[to]; !ok {
-					msg := map[string]interface{}{
-						"type": "error",
-						"data": map[string]interface{}{
-							"request": request["type"],
-							"reason":  "Peer [" + to + "] not found ",
+				to := negotiation.To
+				peer, ok := s.peers[to]
+				if !ok {
+					msg := Request{
+						Type: "error",
+						Data: Error{
+							Request: string(request.Type),
+							Reason:  "Peer [" + to + "] not found ",
 						},
 					}
-					conn.Send(Marshal(msg))
+					s.Send(conn, msg)
 					return
-				} else {
-					peer.conn.Send(Marshal(request))
 				}
+				s.Send(peer.conn, request)
 			}
 			break
-		case "bye":
+		case Bye:
 			{
-				if id, ok := data["session_id"]; !ok || id == nil {
-					logger.Errorf("No session_id found!")
+				var bye Byebye
+				err := json.Unmarshal(body, &bye)
+				if err != nil {
+					logger.Errorf("Unmarshal bye got error %v", err)
 					return
 				}
 
-				sessionID := data["session_id"].(string)
-				ids := strings.Split(sessionID, "-")
+				ids := strings.Split(bye.SessionID, "-")
 				if len(ids) != 2 {
-					msg := map[string]interface{}{
-						"type": "error",
-						"data": map[string]interface{}{
-							"request": request["type"],
-							"reason":  "Invalid session [" + sessionID + "]",
+					msg := Request{
+						Type: "error",
+						Data: Error{
+							Request: string(request.Type),
+							Reason:  "Invalid session [" + bye.SessionID + "]",
 						},
 					}
-					conn.Send(Marshal(msg))
+					s.Send(conn, msg)
 					return
 				}
 				if peer, ok := s.peers[ids[0]]; !ok {
-					msg := map[string]interface{}{
-						"type": "error",
-						"data": map[string]interface{}{
-							"request": request["type"],
-							"reason":  "Peer [" + ids[0] + "] not found.",
+					msg := Request{
+						Type: "error",
+						Data: Error{
+							Request: string(request.Type),
+							Reason:  "Peer [" + ids[0] + "] not found.",
 						},
 					}
-					conn.Send(Marshal(msg))
+					s.Send(conn, msg)
 					return
 				} else {
-					bye := map[string]interface{}{
-						"type": "bye",
-						"data": map[string]interface{}{
+					bye := Request{
+						Type: "bye",
+						Data: map[string]interface{}{
 							"to":         ids[0],
-							"session_id": sessionID,
+							"session_id": bye.SessionID,
 						},
 					}
-					peer.conn.Send(Marshal(bye))
+					s.Send(peer.conn, bye)
 				}
 
 				if peer, ok := s.peers[ids[1]]; !ok {
-					msg := map[string]interface{}{
-						"type": "error",
-						"data": map[string]interface{}{
-							"request": request["type"],
-							"reason":  "Peer [" + ids[0] + "] not found ",
+					msg := Request{
+						Type: "error",
+						Data: Error{
+							Request: string(request.Type),
+							Reason:  "Peer [" + ids[0] + "] not found ",
 						},
 					}
-					conn.Send(Marshal(msg))
+					s.Send(conn, msg)
 					return
 				} else {
-					bye := map[string]interface{}{
-						"type": "bye",
-						"data": map[string]interface{}{
+					bye := Request{
+						Type: "bye",
+						Data: map[string]interface{}{
 							"to":         ids[1],
-							"session_id": sessionID,
+							"session_id": bye.SessionID,
 						},
 					}
-					peer.conn.Send(Marshal(bye))
+					s.Send(peer.conn, bye)
 				}
 			}
 			break
-		case "keepalive":
-			keepalive := map[string]interface{}{
-				"type": "keepalive",
-				"data": map[string]interface{}{},
+		case Keepalive:
+			keepalive := Request{
+				Type: request.Type,
+				Data: make(map[string]interface{}),
 			}
-			conn.Send(Marshal(keepalive))
+			s.Send(conn, keepalive)
 			break
 		default:
 			{
@@ -306,27 +350,26 @@ func (s *Signaler) HandleNewWebSocket(conn *websocket.WebSocketConn, request *ht
 
 	conn.On("close", func(code int, text string) {
 		logger.Infof("On Close %v", conn)
-		var peer_id string = ""
+		var peerID string = ""
 
 		for _, peer := range s.peers {
-
 			if peer.conn == conn {
-				peer_id = peer.info.ID;
-			}else{
-				leave := map[string]interface{}{
-					"type": "leave",
-					"data": peer.info.ID,
+				peerID = peer.info.ID
+			} else {
+				leave := Request{
+					Type: "leave",
+					Data: peer.info.ID,
 				}
-				peer.conn.Send(Marshal(leave))
+				s.Send(peer.conn, leave)
 			}
 		}
 
-		logger.Infof("Remove peer %s", peer_id)
-		if(peer_id == "") {
+		logger.Infof("Remove peer %s", peerID)
+		if peerID == "" {
 			logger.Infof("Leve peer id not found")
 			return
 		}
-		delete(s.peers, peer_id)
+		delete(s.peers, peerID)
 
 		s.NotifyPeersUpdate(conn, s.peers)
 	})
