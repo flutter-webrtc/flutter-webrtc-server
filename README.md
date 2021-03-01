@@ -24,7 +24,7 @@ cd flutter-webrtc-server
 
 ```bash
 brew install mkcert
-mkcert -key-file config/certs/key.pem -cert-file config/certs/cert.pem  localhost 127.0.0.1 ::1 0.0.0.0
+mkcert -key-file configs/certs/key.pem -cert-file configs/certs/cert.pem  localhost 127.0.0.1 ::1 0.0.0.0
 ```
 
 - Run
