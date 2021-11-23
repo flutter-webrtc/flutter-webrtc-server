@@ -25,6 +25,7 @@ cd flutter-webrtc-server
 - Use `mkcert` to create a self-signed certificate.
 
 ```bash
+brew update
 brew install mkcert
 mkcert -key-file configs/certs/key.pem -cert-file configs/certs/cert.pem  localhost 127.0.0.1 ::1 0.0.0.0
 ```
@@ -32,6 +33,7 @@ mkcert -key-file configs/certs/key.pem -cert-file configs/certs/cert.pem  localh
 - Run
 
 ```bash
+brew install golang
 go run cmd/server/main.go
 ```
 
