@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/chuckpreslar/emission"
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/logger"
 	"github.com/gorilla/websocket"
 )
 

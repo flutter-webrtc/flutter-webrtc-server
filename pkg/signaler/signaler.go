@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/turn"
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/util"
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/websocket"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/logger"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/turn"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/util"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/websocket"
 )
 
 const (

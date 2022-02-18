@@ -4,7 +4,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/logger"
 	"github.com/pion/turn/v2"
 )
 

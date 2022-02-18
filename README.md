@@ -18,7 +18,7 @@ Online Demo: https://demo.cloudwebrtc.com:8086/
 - Clone the repository.  
 
 ```bash
-git clone https://github.com/cloudwebrtc/flutter-webrtc-server.git
+git clone https://github.com/flutter-webrtc/flutter-webrtc-server.git
 cd flutter-webrtc-server
 ```
 

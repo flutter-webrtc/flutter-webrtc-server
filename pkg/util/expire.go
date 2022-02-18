@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cloudwebrtc/flutter-webrtc-server/pkg/logger"
+	"github.com/flutter-webrtc/flutter-webrtc-server/pkg/logger"
 )
 
 type val struct {
