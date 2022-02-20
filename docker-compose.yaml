@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  web:
+    container_name: flutterwebrtcserver
+    build: ./
+    ports:
+      - "8086:8086"
