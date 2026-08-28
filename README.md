@@ -37,6 +37,13 @@ brew install golang
 go run cmd/server/main.go
 ```
 
+- Run with Docker
+
+```bash
+docker build -t flutter-webrtc-server .
+docker run -d --name flutter-webrtc-server-container -p 8086:8086 flutter-webrtc-server
+```
+
 - Open https://0.0.0.0:8086 to use flutter web demo.
 - If you need to test mobile app, please check the [webrtc-flutter-demo](https://github.com/cloudwebrtc/flutter-webrtc-demo). 
 
